@@ -313,32 +313,10 @@ class MainWindow(QMainWindow):
             item = QTableWidgetItem(str(value))
             self.fields_table.setItem(i, 1, item)
 
-        pkg = self.package_result
-        if 'error' in pkg:
-            package_items = [('错误', pkg['error'])]
-        else:
-            res = pkg.get('result', {})
-            package_items = [
-                ('桶类型', pkg.get('input', {}).get('drum_type', '')),
-                ('桶数', res.get('total_drums', '')),
-                ('卡板类型', pkg.get('input', {}).get('pallet_type', '')),
-                ('卡板数', res.get('total_pallets', '')),
-                ('产品净重(kg)', res.get('product_weight_kg', '')),
-                ('毛重(kg)', res.get('gross_weight_kg', '')),
-                ('总体积(CBM)', res.get('total_volume_cbm', '')),
-                ('20GP装裁', '是' if pkg.get('container_fit', {}).get('fits_20gp') else '否'),
-            ]
-
-        for i, (name, value) in enumerate(package_items):
-            self.package_table.setItem(i, 0, QTableWidgetItem(name))
-            item = QTableWidgetItem(str(value))
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self.package_table.setItem(i, 1, item)
-
     def copy_cell_value(self, row, col):
         """点击单元格复制值"""
         if col == 1:
-            item = self.fields_table.item(row, col) or self.package_table.item(row, col)
+            item = self.fields_table.item(row, col)
             if item:
                 clipboard = QApplication.clipboard()
                 clipboard.setText(item.text())
