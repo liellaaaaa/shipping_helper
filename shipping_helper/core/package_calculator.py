@@ -178,7 +178,37 @@ class PackageCalculator:
         if data is None:
             raise Exception("无法解码文件")
 
-        # 第一遍：解析桶类型和卡板
+        # 支持两种格式：packages/pallets字典 或 直接列表
+        if isinstance(data, dict):
+            # 新格式：包含packages和pallets数组
+            if 'packages' in data:
+                for pkg in data.get('packages', []):
+                    self.packages.append({
+                        'name': pkg.get('name', ''),
+                        'dims': pkg.get('dims', ''),
+                        'cbm': pkg.get('cbm', 0),
+                        'tare_kg': pkg.get('tare_kg', 0),
+                        'gross_kg': pkg.get('gross_kg', 0),
+                        'net_kg': pkg.get('net_kg', 0),
+                    })
+            if 'pallets' in data:
+                for pallet in data.get('pallets', []):
+                    self.pallets.append({
+                        'name': pallet.get('name', ''),
+                        'size_m': pallet.get('size_m', ''),
+                        'tare_kg': pallet.get('tare_kg', 0),
+                        'cbm': pallet.get('cbm', 0),
+                    })
+            if 'pallet_capacity' in data:
+                self.pallet_capacity = data.get('pallet_capacity', {})
+            if not self.pallets:
+                self.pallets = [
+                    {'name': '1.0*1.0m卡板', 'size_m': '1.0*1.0', 'tare_kg': 17.0, 'cbm': 0.15},
+                    {'name': '1.1*1.1m卡板', 'size_m': '1.1*1.1', 'tare_kg': 18.5, 'cbm': 0.2},
+                ]
+            return
+
+        # 旧格式：直接是列表，逐项解析
         for item in data:
             drum_type = item.get('drum_type', '')
             dimensions = item.get('dimensions', '')
