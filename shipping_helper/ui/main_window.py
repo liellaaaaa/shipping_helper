@@ -136,28 +136,51 @@ class MainWindow(QMainWindow):
         input_group.setLayout(input_layout)
         layout.addWidget(input_group)
 
-        # ===== 合并字段结果（外贸订单 + PI） =====
-        self.fields_group = QGroupBox("合并字段结果（外贸订单 + PI）")
+        # ===== 合并字段结果 =====
+        self.fields_group = QGroupBox("合并字段结果")
         fields_layout = QVBoxLayout()
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(300)
+        scroll.setMinimumHeight(350)
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout()
 
-        self.fields_table = QTableWidget()
-        self.fields_table.setColumnCount(2)
-        self.fields_table.setHorizontalHeaderLabels(["字段名", "值"])
-        self.fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.fields_table.verticalHeader().setDefaultSectionSize(28)
-        self.fields_table.setWordWrap(True)
-        self.fields_table.cellClicked.connect(self.copy_cell_value)
-        self.fields_table.setColumnWidth(0, 120)
-        self.fields_table.setColumnWidth(1, 350)
-        self.fields_table.setRowCount(23)
-        self.fields_table.resizeRowsToContents()
-        scroll_layout.addWidget(self.fields_table)
+        # 外贸销售订单表解析结果
+        order_fields_group = QGroupBox("外贸销售订单表解析结果")
+        order_fields_layout = QVBoxLayout()
+        self.order_fields_table = QTableWidget()
+        self.order_fields_table.setColumnCount(2)
+        self.order_fields_table.setHorizontalHeaderLabels(["字段名", "值"])
+        self.order_fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.order_fields_table.verticalHeader().setDefaultSectionSize(25)
+        self.order_fields_table.setWordWrap(True)
+        self.order_fields_table.cellClicked.connect(self.copy_cell_value)
+        self.order_fields_table.setColumnWidth(0, 100)
+        self.order_fields_table.setColumnWidth(1, 320)
+        self.order_fields_table.setRowCount(23)
+        self.order_fields_table.resizeRowsToContents()
+        order_fields_layout.addWidget(self.order_fields_table)
+        order_fields_group.setLayout(order_fields_layout)
+        scroll_layout.addWidget(order_fields_group)
+
+        # PI文件解析结果
+        pi_fields_group = QGroupBox("PI文件解析结果")
+        pi_fields_layout = QVBoxLayout()
+        self.pi_fields_table = QTableWidget()
+        self.pi_fields_table.setColumnCount(2)
+        self.pi_fields_table.setHorizontalHeaderLabels(["字段名", "值"])
+        self.pi_fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.pi_fields_table.verticalHeader().setDefaultSectionSize(25)
+        self.pi_fields_table.setWordWrap(True)
+        self.pi_fields_table.cellClicked.connect(self.copy_cell_value)
+        self.pi_fields_table.setColumnWidth(0, 100)
+        self.pi_fields_table.setColumnWidth(1, 320)
+        self.pi_fields_table.setRowCount(12)
+        self.pi_fields_table.resizeRowsToContents()
+        pi_fields_layout.addWidget(self.pi_fields_table)
+        pi_fields_group.setLayout(pi_fields_layout)
+        scroll_layout.addWidget(pi_fields_group)
 
         # 上移/下移按钮
         shift_layout = QHBoxLayout()
@@ -377,8 +400,8 @@ class MainWindow(QMainWindow):
 
     def _update_result_ui(self):
         """更新结果UI"""
-        # 合并字段列表（订单 + PI + 知识库）
-        fields = [
+        # 外贸销售订单表字段（23个）
+        order_fields = [
             ('业务员', self.merged_data.get('业务员', '')),
             ('客户编号', self.merged_data.get('客户编号', '')),
             ('内部编号', self.merged_data.get('内部编号', '')),
@@ -402,6 +425,17 @@ class MainWindow(QMainWindow):
             ('出货渠道', self.merged_data.get('出货渠道', '')),
             ('出货方式', self.merged_data.get('出货方式', '')),
             ('规格异常', self.merged_data.get('规格异常', '')),
+        ]
+
+        self.order_fields_table.setRowCount(len(order_fields))
+        for i, (name, value) in enumerate(order_fields):
+            self.order_fields_table.setItem(i, 0, QTableWidgetItem(name))
+            item = QTableWidgetItem(str(value))
+            self.order_fields_table.setItem(i, 1, item)
+        self.order_fields_table.resizeRowsToContents()
+
+        # PI文件字段
+        pi_fields = [
             ('收货人', self.merged_data.get('收货人', '')),
             ('收货人地址', self.merged_data.get('收货人地址', '')),
             ('日期', self.merged_data.get('日期', '')),
@@ -417,60 +451,63 @@ class MainWindow(QMainWindow):
             ('报关成分', self.merged_data.get('报关成分', '')),
         ]
 
-        self.fields_table.setRowCount(len(fields))
-        for i, (name, value) in enumerate(fields):
-            self.fields_table.setItem(i, 0, QTableWidgetItem(name))
+        self.pi_fields_table.setRowCount(len(pi_fields))
+        for i, (name, value) in enumerate(pi_fields):
+            self.pi_fields_table.setItem(i, 0, QTableWidgetItem(name))
             item = QTableWidgetItem(str(value))
-            self.fields_table.setItem(i, 1, item)
-        self.fields_table.resizeRowsToContents()
+            self.pi_fields_table.setItem(i, 1, item)
+        self.pi_fields_table.resizeRowsToContents()
 
     def _shift_values_down(self):
         """下移值：将选中行及之后的值往下移一位"""
-        current_row = self.fields_table.currentRow()
+        table = self.order_fields_table
+        current_row = table.currentRow()
         if current_row < 0:
             current_row = 10
-        row_count = self.fields_table.rowCount()
+        row_count = table.rowCount()
         if current_row >= row_count - 1:
             self.statusBar().showMessage("已到最后一行，无法继续下移", 3000)
             return
 
-        current_item = self.fields_table.item(current_row, 1)
+        current_item = table.item(current_row, 1)
         original_value = current_item.text() if current_item else ''
 
         for i in range(current_row, row_count - 1):
-            item = self.fields_table.item(i + 1, 1)
+            item = table.item(i + 1, 1)
             value = item.text() if item else ''
-            self.fields_table.setItem(i, 1, QTableWidgetItem(value))
-        self.fields_table.setItem(row_count - 1, 1, QTableWidgetItem(''))
-        self.fields_table.setItem(current_row + 1, 1, QTableWidgetItem(original_value))
-        self.fields_table.setCurrentCell(current_row + 1, 1)
+            table.setItem(i, 1, QTableWidgetItem(value))
+        table.setItem(row_count - 1, 1, QTableWidgetItem(''))
+        table.setItem(current_row + 1, 1, QTableWidgetItem(original_value))
+        table.setCurrentCell(current_row + 1, 1)
         self.statusBar().showMessage(f"已将第{current_row+1}行下移", 3000)
 
     def _shift_values_up(self):
         """上移值：将选中行及之后的值往上移一位"""
-        current_row = self.fields_table.currentRow()
+        table = self.order_fields_table
+        current_row = table.currentRow()
         if current_row < 0:
             current_row = 10
         if current_row <= 0:
             self.statusBar().showMessage("已到第一行，无法继续上移", 3000)
             return
 
-        current_item = self.fields_table.item(current_row, 1)
+        current_item = table.item(current_row, 1)
         original_value = current_item.text() if current_item else ''
 
         for i in range(current_row - 1, -1, -1):
-            item = self.fields_table.item(i, 1)
+            item = table.item(i, 1)
             value = item.text() if item else ''
-            self.fields_table.setItem(i + 1, 1, QTableWidgetItem(value))
-        self.fields_table.setItem(0, 1, QTableWidgetItem(''))
-        self.fields_table.setItem(current_row - 1, 1, QTableWidgetItem(original_value))
-        self.fields_table.setCurrentCell(current_row - 1, 1)
+            table.setItem(i + 1, 1, QTableWidgetItem(value))
+        table.setItem(0, 1, QTableWidgetItem(''))
+        table.setItem(current_row - 1, 1, QTableWidgetItem(original_value))
+        table.setCurrentCell(current_row - 1, 1)
         self.statusBar().showMessage(f"已将第{current_row+1}行上移", 3000)
 
     def copy_cell_value(self, row, col):
         """点击单元格复制值"""
         if col == 1:
-            item = self.fields_table.item(row, col)
+            table = self.sender()
+            item = table.item(row, col)
             if item:
                 clipboard = QApplication.clipboard()
                 clipboard.setText(item.text())
