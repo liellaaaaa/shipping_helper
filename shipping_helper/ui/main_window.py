@@ -7,7 +7,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTextEdit, QPushButton, QLabel, QMessageBox,
                              QTableWidget, QTableWidgetItem, QScrollArea,
-                             QGroupBox, QLineEdit, QApplication)
+                             QGroupBox, QLineEdit, QApplication, QHeaderView)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QClipboard
 import json
@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         self.btn_select_pi.clicked.connect(self.select_pi_file)
         pi_layout.addWidget(self.pi_path_edit)
         pi_layout.addWidget(self.btn_select_pi)
-        layout.addWidget(pi_layout)
+        layout.addLayout(pi_layout)
 
         self.btn_calculate = QPushButton("开始计算")
         self.btn_calculate.clicked.connect(self.calculate)
@@ -106,7 +106,7 @@ class MainWindow(QMainWindow):
         self.fields_table = QTableWidget()
         self.fields_table.setColumnCount(2)
         self.fields_table.setHorizontalHeaderLabels(["字段名", "值"])
-        self.fields_table.horizontalHeader().setStretchToSection(True)
+        self.fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.fields_table.setRowCount(23)
         self.fields_table.cellClicked.connect(self.copy_cell_value)
         fields_layout.addWidget(self.fields_table)
