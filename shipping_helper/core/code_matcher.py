@@ -35,7 +35,16 @@ class CodeMatcher:
         try:
             with open(self.codes_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                self.codes = data.get('codes', [])
+                # 支持两种格式：codes数组 或 products对象
+                if 'codes' in data:
+                    self.codes = data.get('codes', [])
+                elif 'products' in data:
+                    # 转换为字典数组格式
+                    self.codes = []
+                    for code, info in data.get('products', {}).items():
+                        item = dict(info)
+                        item['产品内编'] = code
+                        self.codes.append(item)
                 self.version = data.get('version', '')
             return True
         except Exception as e:

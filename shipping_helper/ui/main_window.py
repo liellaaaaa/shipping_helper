@@ -68,7 +68,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("外贸销售订单表粘贴:"))
         self.order_text_edit = QTextEdit()
         self.order_text_edit.setPlaceholderText("从在线表格复制一行数据，粘贴至此...")
-        self.order_text_edit.setMinimumHeight(150)
+        self.order_text_edit.setMinimumHeight(200)
+        self.order_text_edit.setFont(QFont("Microsoft YaHei", 10))
         layout.addWidget(self.order_text_edit)
 
         layout.addWidget(QLabel("PI文件 (.xls):"))
@@ -259,7 +260,6 @@ class MainWindow(QMainWindow):
         for i, (name, value) in enumerate(fields):
             self.fields_table.setItem(i, 0, QTableWidgetItem(name))
             item = QTableWidgetItem(str(value))
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.fields_table.setItem(i, 1, item)
 
         pkg = self.package_result
