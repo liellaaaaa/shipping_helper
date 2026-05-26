@@ -117,6 +117,7 @@ class MainWindow(QMainWindow):
         # 第一列(字段名)固定宽度，第二列(值)允许自动换行
         self.fields_table.setColumnWidth(0, 100)
         self.fields_table.setColumnWidth(1, 300)
+        self.fields_table.setRowCount(23)
         fields_layout.addWidget(self.fields_table)
 
         # 移动按钮：当订单要求字段缺失时使用
