@@ -117,6 +117,15 @@ class MainWindow(QMainWindow):
         for i in range(23):
             self.fields_table.setRowHeight(i, 25)
         fields_layout.addWidget(self.fields_table)
+
+        # 右移按钮：当订单要求字段缺失时使用
+        shift_layout = QHBoxLayout()
+        self.btn_shift_right = QPushButton("右移（订单要求缺失时使用）")
+        self.btn_shift_right.clicked.connect(self._shift_values_right)
+        shift_layout.addWidget(self.btn_shift_right)
+        shift_layout.addStretch()
+        fields_layout.addLayout(shift_layout)
+
         fields_group.setLayout(fields_layout)
         scroll_layout.addWidget(fields_group)
 
@@ -312,6 +321,19 @@ class MainWindow(QMainWindow):
             self.fields_table.setItem(i, 0, QTableWidgetItem(name))
             item = QTableWidgetItem(str(value))
             self.fields_table.setItem(i, 1, item)
+
+    def _shift_values_right(self):
+        """右移值：从订单要求开始，将值往后移一位"""
+        # 从后往前移，避免覆盖
+        for i in range(21, 9, -1):
+            item = self.fields_table.item(i, 1)
+            value = item.text() if item else ''
+            new_item = QTableWidgetItem(value)
+            self.fields_table.setItem(i + 1, 1, new_item)
+
+        # 订单要求位置清空
+        self.fields_table.setItem(10, 1, QTableWidgetItem(''))
+        self.statusBar().showMessage("已右移，请检查并手动修正", 3000)
 
     def copy_cell_value(self, row, col):
         """点击单元格复制值"""
