@@ -46,10 +46,10 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(main_layout)
 
         left_widget = self._create_input_panel()
-        main_layout.addWidget(left_widget, 1)
+        main_layout.addWidget(left_widget, 2)  # 左侧占比较小
 
         right_widget = self._create_result_panel()
-        main_layout.addWidget(right_widget, 1)
+        main_layout.addWidget(right_widget, 3)  # 右侧占比较大
 
         bottom_layout = QHBoxLayout()
         self.btn_phase2 = QPushButton("进入 Phase 2")
@@ -70,6 +70,7 @@ class MainWindow(QMainWindow):
         self.order_text_edit.setPlaceholderText("从在线表格复制一行数据，粘贴至此...")
         self.order_text_edit.setMinimumHeight(200)
         self.order_text_edit.setFont(QFont("Microsoft YaHei", 10))
+        self.order_text_edit.setLineWrapMode(QTextEdit.WidgetWidth)  # 自动换行
         layout.addWidget(self.order_text_edit)
 
         layout.addWidget(QLabel("PI文件 (.xls):"))
@@ -109,7 +110,11 @@ class MainWindow(QMainWindow):
         self.fields_table.setHorizontalHeaderLabels(["字段名", "值"])
         self.fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.fields_table.setRowCount(23)
+        self.fields_table.setWordWrap(True)
         self.fields_table.cellClicked.connect(self.copy_cell_value)
+        # 设置默认行高
+        for i in range(23):
+            self.fields_table.setRowHeight(i, 25)
         fields_layout.addWidget(self.fields_table)
         fields_group.setLayout(fields_layout)
         scroll_layout.addWidget(fields_group)
