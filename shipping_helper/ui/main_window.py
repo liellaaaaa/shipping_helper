@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.package_result = {}
         self._current_order_qty = 0
         self._current_order_req = ''
+        self._suppress_text_changed = False  # 防止setPlainText触发textChanged死循环
 
         self._load_knowledge()
         self._init_ui()
@@ -107,34 +108,61 @@ class MainWindow(QMainWindow):
         self.btn_calculate.clicked.connect(self.calculate)
         layout.addWidget(self.btn_calculate)
 
+        # 解析结果预览区域（两个预览合并）
         preview_label = QLabel("解析结果预览:")
         preview_label.setStyleSheet("font-weight: bold; margin-top: 15px;")
         layout.addWidget(preview_label)
 
-        # PI预览区域
-        self.pi_preview_widget = QWidget()
-        self.pi_preview_layout = QGridLayout()
-        self.pi_preview_layout.setSpacing(5)
-        self.pi_preview_widget.setLayout(self.pi_preview_layout)
+        # 预览区域使用QWidget包含两个GroupBox
+        self.preview_container = QWidget()
+        preview_main_layout = QVBoxLayout()
+        self.preview_container.setLayout(preview_main_layout)
 
-        self.preview_labels = {}
-        preview_fields = [
+        # 订单预览
+        order_preview_group = QGroupBox("销售订单表解析结果")
+        order_preview_layout = QGridLayout()
+        order_preview_layout.setSpacing(5)
+        self.order_preview_labels = {}
+        order_preview_fields = [
+            ('业务员', 0, 0), ('客户编号', 0, 2),
+            ('内部编号', 1, 0), ('产品中文名', 1, 2),
+            ('报关名称', 2, 0), ('规格kg', 2, 2),
+            ('订单量kg', 3, 0), ('订单要求', 3, 2),
+            ('交货日期', 4, 0), ('订单号', 4, 2),
+        ]
+        for field, row, col in order_preview_fields:
+            lbl = QLineEdit("-")
+            lbl.setStyleSheet("background-color: #f5f5f5; padding: 2px; border-radius: 3px;")
+            lbl.setReadOnly(False)
+            order_preview_layout.addWidget(QLabel(f"{field}:"), row, col)
+            order_preview_layout.addWidget(lbl, row, col + 1)
+            self.order_preview_labels[field] = lbl
+        order_preview_group.setLayout(order_preview_layout)
+        preview_main_layout.addWidget(order_preview_group)
+
+        # PI预览
+        pi_preview_group = QGroupBox("PI文件解析结果")
+        pi_preview_layout = QGridLayout()
+        pi_preview_layout.setSpacing(5)
+        self.pi_preview_labels = {}
+        pi_preview_fields = [
             ('收货人', 0, 0), ('收货人地址', 0, 2),
             ('日期', 1, 0), ('PI号', 1, 2),
             ('品名英文', 2, 0), ('数量', 2, 2),
             ('单价', 3, 0), ('金额', 3, 2),
             ('H.S.Code', 4, 0), ('卸货港', 4, 2),
-            ('包装说明', 5, 0),
         ]
-        for field, row, col in preview_fields:
-            lbl = QLabel("-")
-            lbl.setWordWrap(True)
-            lbl.setStyleSheet("background-color: #f5f5f5; padding: 3px; border-radius: 3px;")
-            self.pi_preview_layout.addWidget(QLabel(f"{field}:"), row, col)
-            self.pi_preview_layout.addWidget(lbl, row, col + 1)
-            self.preview_labels[field] = lbl
+        for field, row, col in pi_preview_fields:
+            lbl = QLineEdit("-")
+            lbl.setStyleSheet("background-color: #f5f5f5; padding: 2px; border-radius: 3px;")
+            lbl.setReadOnly(False)
+            pi_preview_layout.addWidget(QLabel(f"{field}:"), row, col)
+            pi_preview_layout.addWidget(lbl, row, col + 1)
+            self.pi_preview_labels[field] = lbl
+        pi_preview_group.setLayout(pi_preview_layout)
+        preview_main_layout.addWidget(pi_preview_group)
 
-        layout.addWidget(self.pi_preview_widget)
+        layout.addWidget(self.preview_container)
 
         self.knowledge_label = QLabel("知识库状态：未加载")
         layout.addWidget(self.knowledge_label)
@@ -254,17 +282,25 @@ class MainWindow(QMainWindow):
 
     def _on_order_text_changed(self):
         """订单文本变化时，将tab替换为换行"""
+        if self._suppress_text_changed:
+            return
         text = self.order_text_edit.toPlainText()
         if '\t' in text:
-            cursor = self.order_text_edit.textCursor()
-            cursor.movePosition(cursor.End)
+            self._suppress_text_changed = True
             self.order_text_edit.setPlainText(text.replace('\t', '\n'))
-            cursor.movePosition(cursor.End)
-            self.order_text_edit.setTextCursor(cursor)
+            self._suppress_text_changed = False
 
-    def _update_pi_preview(self, pi_data: dict):
-        """更新PI预览区域"""
-        for field, lbl in self.preview_labels.items():
+    def _update_preview(self, order_data: dict, pi_data: dict):
+        """更新预览区域（订单+PI）"""
+        # 更新订单预览
+        for field, lbl in self.order_preview_labels.items():
+            value = order_data.get(field, '-')
+            if isinstance(value, float):
+                value = f"{value:.0f}"
+            lbl.setText(str(value) if value else '-')
+
+        # 更新PI预览
+        for field, lbl in self.pi_preview_labels.items():
             value = pi_data.get(field, '-')
             if isinstance(value, float):
                 value = f"{value:.2f}" if field in ['单价', '金额'] else f"{value:.0f}"
@@ -302,8 +338,8 @@ class MainWindow(QMainWindow):
         else:
             pi_data = {}
 
-        # 更新PI预览
-        self._update_pi_preview(pi_data)
+        # 更新预览
+        self._update_preview(order_data, pi_data)
 
         internal_code = self.order_parser.get_internal_code()
         if internal_code:
@@ -490,6 +526,14 @@ class MainWindow(QMainWindow):
         else:
             res = result.get('result', {})
             container = result.get('container_fit', {})
+            fits_20gp = container.get('fits_20gp', False)
+            full_loads = container.get('full_20gp_loads', 0)
+
+            if fits_20gp:
+                container_text = f"能装入20GP，需要 {full_loads} 个货柜"
+            else:
+                container_text = "不能装入20GP"
+
             text = f"""
 桶类型: {drum_type}
 桶数: {res.get('total_drums', 0)}
@@ -497,7 +541,7 @@ class MainWindow(QMainWindow):
 产品净重: {res.get('product_weight_kg', 0)} kg
 毛重: {res.get('gross_weight_kg', 0)} kg
 总体积: {res.get('total_volume_cbm', 0)} CBM
-{'能装入20GP' if container.get('fits_20gp') else '不能装入20GP'}
+{container_text}
 """
             self.package_result_label.setText(text.strip())
 
