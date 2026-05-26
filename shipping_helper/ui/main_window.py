@@ -7,7 +7,8 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTextEdit, QPushButton, QLabel, QMessageBox,
                              QTableWidget, QTableWidgetItem, QScrollArea,
-                             QGroupBox, QLineEdit, QApplication, QHeaderView)
+                             QGroupBox, QLineEdit, QApplication, QHeaderView,
+                             QComboBox, QCheckBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QClipboard
 import json
@@ -26,13 +27,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.order_parser = OrderParser()
         self.pi_extractor = PIExtractor()
-        self.code_matcher = None
-        self.package_calculator = None
         self.merged_data = {}
         self.package_result = {}
+        self._current_order_qty = 0
+        self._current_order_req = ''
 
-        self._init_ui()
         self._load_knowledge()
+        self._init_ui()
 
     def _init_ui(self):
         """初始化UI"""
@@ -119,14 +120,45 @@ class MainWindow(QMainWindow):
         fields_group.setLayout(fields_layout)
         scroll_layout.addWidget(fields_group)
 
-        package_group = QGroupBox("包装计算结果")
+        package_group = QGroupBox("包装计算")
         package_layout = QVBoxLayout()
-        self.package_table = QTableWidget()
-        self.package_table.setColumnCount(2)
-        self.package_table.setHorizontalHeaderLabels(["项目", "值"])
-        self.package_table.setRowCount(8)
-        self.package_table.cellClicked.connect(self.copy_cell_value)
-        package_layout.addWidget(self.package_table)
+
+        # 桶类型选择
+        drum_row = QHBoxLayout()
+        drum_row.addWidget(QLabel("桶类型:"))
+        self.drum_combo = QComboBox()
+        self.drum_combo.addItems(self.package_calculator.get_package_options())
+        self.drum_combo.currentTextChanged.connect(self._on_package_changed)
+        drum_row.addWidget(self.drum_combo)
+        drum_row.addStretch()
+        package_layout.addLayout(drum_row)
+
+        # 卡板选择
+        pallet_row = QHBoxLayout()
+        pallet_row.addWidget(QLabel("卡板:"))
+        self.pallet_combo = QComboBox()
+        self.pallet_combo.addItems(self.package_calculator.get_pallet_options())
+        self.pallet_combo.currentTextChanged.connect(self._on_package_changed)
+        pallet_row.addWidget(self.pallet_combo)
+        pallet_row.addStretch()
+        package_layout.addLayout(pallet_row)
+
+        # 不打卡板选项
+        self.no_pallet_check = QCheckBox("不打卡板")
+        self.no_pallet_check.stateChanged.connect(self._on_package_changed)
+        package_layout.addWidget(self.no_pallet_check)
+
+        # 计算结果标签
+        self.package_result_label = QLabel("请先粘贴订单数据")
+        self.package_result_label.setWordWrap(True)
+        self.package_result_label.setFont(QFont("Microsoft YaHei", 10))
+        package_layout.addWidget(self.package_result_label)
+
+        # 重新计算按钮
+        self.btn_recalc = QPushButton("重新计算包装")
+        self.btn_recalc.clicked.connect(self._recalculate_package)
+        package_layout.addWidget(self.btn_recalc)
+
         package_group.setLayout(package_layout)
         scroll_layout.addWidget(package_group)
 
@@ -146,9 +178,12 @@ class MainWindow(QMainWindow):
         self.code_matcher = CodeMatcher(products_file)
         if self.code_matcher.load(products_file):
             version = self.code_matcher.get_version()
-            self.knowledge_label.setText(f"知识库状态：已加载 (v{version})")
+            # 延迟更新label，等UI初始化完成
+            if hasattr(self, 'knowledge_label'):
+                self.knowledge_label.setText(f"知识库状态：已加载 (v{version})")
         else:
-            self.knowledge_label.setText("知识库状态：加载失败")
+            if hasattr(self, 'knowledge_label'):
+                self.knowledge_label.setText("知识库状态：加载失败")
 
         self.package_calculator = PackageCalculator(packaging_file)
 
@@ -190,7 +225,18 @@ class MainWindow(QMainWindow):
 
         order_req = order_data.get('订单要求', '')
         order_qty = float(order_data.get('订单量kg', 0) or 0)
-        self.package_result = self._calculate_package(order_req, order_qty)
+        self._current_order_qty = order_qty
+        self._current_order_req = order_req
+
+        # 智能推荐桶类型
+        if order_req and '粉' in order_req:
+            # 粉类优先用纸桶或编织袋
+            for i, name in enumerate(self.drum_combo.currentText()):
+                if '纸桶' in name or '编织' in name or '25kg' in name:
+                    self.drum_combo.setCurrentIndex(i)
+                    break
+
+        self._recalculate_package()
 
         self._update_result_ui()
 
@@ -297,6 +343,44 @@ class MainWindow(QMainWindow):
                 clipboard = QApplication.clipboard()
                 clipboard.setText(item.text())
                 self.statusBar().showMessage(f"已复制: {item.text()}", 2000)
+
+    def _on_package_changed(self):
+        """当包装选项变化时重新计算"""
+        if hasattr(self, '_current_order_qty') and self._current_order_qty > 0:
+            self._recalculate_package()
+
+    def _recalculate_package(self):
+        """重新计算包装"""
+        if not hasattr(self, '_current_order_qty') or self._current_order_qty <= 0:
+            self.package_result_label.setText("无效的订单量")
+            return
+
+        drum_type = self.drum_combo.currentText()
+        pallet_type = self.pallet_combo.currentText()
+        total_qty = self._current_order_qty
+
+        if self.no_pallet_check.isChecked():
+            result = self.package_calculator.calculate_no_pallet(drum_type, total_qty)
+        else:
+            result = self.package_calculator.calculate_with_pallet(drum_type, pallet_type, total_qty)
+
+        self.package_result = result
+
+        if 'error' in result:
+            self.package_result_label.setText(f"错误: {result['error']}")
+        else:
+            res = result.get('result', {})
+            container = result.get('container_fit', {})
+            text = f"""
+桶类型: {drum_type}
+桶数: {res.get('total_drums', 0)}
+卡板数: {'无' if self.no_pallet_check.isChecked() else res.get('total_pallets', 0)}
+产品净重: {res.get('product_weight_kg', 0)} kg
+毛重: {res.get('gross_weight_kg', 0)} kg
+总体积: {res.get('total_volume_cbm', 0)} CBM
+{'能装入20GP' if container.get('fits_20gp') else '不能装入20GP'}
+"""
+            self.package_result_label.setText(text.strip())
 
     def enter_phase2(self):
         """进入Phase 2（预留接口）"""
