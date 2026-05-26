@@ -514,7 +514,12 @@ class PackageCalculator:
                 'drum': drum_info,
                 'pallet': pallet_info,
             }
-        drums_per_pallet, capacity_note = capacity
+        # 支持两种格式：整数(数量) 或 元组(数量, 说明)
+        if isinstance(capacity, tuple):
+            drums_per_pallet, capacity_note = capacity
+        else:
+            drums_per_pallet = capacity
+            capacity_note = f"{pallet_key}m卡板可以放{drums_per_pallet}桶"
 
         drum_net_kg = drum_info['gross_kg'] - drum_info['tare_kg']
         if drum_net_kg <= 0:
