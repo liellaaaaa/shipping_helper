@@ -71,7 +71,8 @@ class MainWindow(QMainWindow):
         self.order_text_edit.setPlaceholderText("从在线表格复制一行数据，粘贴至此...")
         self.order_text_edit.setMinimumHeight(200)
         self.order_text_edit.setFont(QFont("Microsoft YaHei", 10))
-        self.order_text_edit.setLineWrapMode(QTextEdit.WidgetWidth)  # 自动换行
+        self.order_text_edit.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.order_text_edit.setMaximumWidth(350)  # 限制宽度，超出自动换行
         layout.addWidget(self.order_text_edit)
 
         layout.addWidget(QLabel("PI文件 (.xls):"))
@@ -109,18 +110,19 @@ class MainWindow(QMainWindow):
         self.fields_table = QTableWidget()
         self.fields_table.setColumnCount(2)
         self.fields_table.setHorizontalHeaderLabels(["字段名", "值"])
-        # 不使用Stretch，让列宽固定，内容自动换行
+        # 第一列(字段名)固定宽度100，第二列(值)固定宽度300，超出自动换行
         self.fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.fields_table.verticalHeader().setDefaultSectionSize(30)  # 默认行高30
         self.fields_table.setWordWrap(True)
         self.fields_table.cellClicked.connect(self.copy_cell_value)
-        # 第一列(字段名)固定宽度，第二列(值)允许自动换行
         self.fields_table.setColumnWidth(0, 100)
         self.fields_table.setColumnWidth(1, 300)
         self.fields_table.setRowCount(23)
+        # 让行高自动适应内容
+        self.fields_table.resizeRowsToContents()
         fields_layout.addWidget(self.fields_table)
 
-        # 移动按钮：当订单要求字段缺失时使用
+        # 移动按钮：根据选中行移动
         shift_layout = QHBoxLayout()
         self.btn_shift_up = QPushButton("上移")
         self.btn_shift_up.clicked.connect(self._shift_values_up)
@@ -330,26 +332,42 @@ class MainWindow(QMainWindow):
             self.fields_table.setItem(i, 1, item)
 
     def _shift_values_down(self):
-        """右移值：从订单要求开始，将值往后移一位"""
+        """下移值：将选中行及之后的值往下移一位"""
+        current_row = self.fields_table.currentRow()
+        if current_row < 0:
+            current_row = 10  # 默认从第10行开始
+        if current_row >= 22:
+            self.statusBar().showMessage("已到最后一行，无法继续下移", 3000)
+            return
         # 从后往前移，避免覆盖
-        for i in range(21, 9, -1):
+        for i in range(22, current_row, -1):
             item = self.fields_table.item(i, 1)
             value = item.text() if item else ''
             new_item = QTableWidgetItem(value)
-            self.fields_table.setItem(i + 1, 1, new_item)
-
-        # 订单要求位置清空
-        self.fields_table.setItem(10, 1, QTableWidgetItem(''))
-        self.statusBar().showMessage("已右移，请检查并手动修正", 3000)
+            self.fields_table.setItem(i, 1, new_item)
+        # 选中行清空
+        self.fields_table.setItem(current_row, 1, QTableWidgetItem(''))
+        self.fields_table.setCurrentCell(current_row + 1, 1)
+        self.statusBar().showMessage(f"已将第{current_row+1}行下移", 3000)
 
     def _shift_values_up(self):
-        """左移值：将10及之后的值往左移一位"""
+        """上移值：将选中行及之后的值往上移一位"""
+        current_row = self.fields_table.currentRow()
+        if current_row < 0:
+            current_row = 11  # 默认从第11行开始
+        if current_row <= 0:
+            self.statusBar().showMessage("已到第一行，无法继续上移", 3000)
+            return
         # 从前往后移
-        for i in range(10, 22):
+        for i in range(current_row - 1, 22):
             item = self.fields_table.item(i + 1, 1)
             value = item.text() if item else ''
             new_item = QTableWidgetItem(value)
             self.fields_table.setItem(i, 1, new_item)
+        # 最后一行清空
+        self.fields_table.setItem(22, 1, QTableWidgetItem(''))
+        self.fields_table.setCurrentCell(current_row - 1, 1)
+        self.statusBar().showMessage(f"已将第{current_row+1}行上移", 3000)
 
         # 最后一个字段清空
         self.fields_table.setItem(22, 1, QTableWidgetItem(''))
