@@ -1,0 +1,103 @@
+Sheet: 广东宏昊报关成分确认表
+Total rows: 402
+
+Headers (first 15):
+  [0] 序号
+  [1] 产品内编
+  [2] PI名建议
+  [3] 产品线
+  [4] 产品外观
+  [5] 旧商品编码
+  [6] 新商品编码
+  [7] 报关名称
+  [8] 运输鉴定名称
+  [9] 用途
+  [10] 成分
+  [11] 退税税率
+  [12] 监管条件
+  [13] 检验检疫
+  [14] None
+
+First 3 data rows:
+Row 2: (1, 'F-380-1', None, '研发三部', '黄色透明液体', 391000000, 3402420000, '吸湿排汗整理剂', None, '提高纺织物品的抗皱性和弹性恢复能力', '柔软吸湿排汗整理剂9016-88-0：90％+水：10％', 0.13, None, None, 'OK')
+Row 3: (2, 'CF992C', None, '研发一部', '黄色液体（久置外观会变浅）', 391000000, 3402420000, '吸湿排汗整理剂', None, '提高纺织物品的抗皱性和弹性恢复能力', '柔软吸湿排汗整理剂9016-88-0：80％+水：20％', 0.13, None, None, 'OK')
+Row 4: (3, 'CF463', None, '研发三部', '深黄色透明至不透明粘液（25℃）（低温不透）', 391000000, 3403910000, '纺织柔软剂', None, None, '亲水软油68153-35-5：95％+水：5％', 0.13, '无', None, 'OK')
+
+
+=== 外贸销售订单表 ===
+Sheet: 智能表1
+Total rows: 271
+Headers:
+  [0] 业务员
+  [1] 客户编号
+  [2] 内部编号
+  [3] 产品中文名
+  [4] 报关名称
+  [5] 规格kg
+  [6] 订单量kg
+  [7] 是否调价
+  [8] 有无样品
+  [9] 订单要求
+  [10] 交货日期
+  [11] 审核
+  [12] 销售区域
+  [13] 订单号
+  [14] 出货抬头
+  [15] 单据类型
+  [16] 跟单员
+  [17] 下单日期
+  [18] 确认下单
+  [19] 生产交期
+  [20] 出货渠道
+  [21] 出货方式
+  [22] 规格异常
+
+First 3 data rows:
+Row 2: ('姚彬', 'WA524', 'K70-EB', '皂洗剂', '', '50', 12500, '无调价', '无样品跟货', '液体：用蓝色50公斤共250桶，全新大口桶包装，不用封口纸，内袋扎紧一点，用1.1m*1.1m，18桶/卡板，共13卡板；剩余16桶打1卡板。\n粉：全新白色编织袋无字包装（内有PVC袋），25kg袋共500袋，用1.1*1.1卡板，40包/卡板，共12卡板；剩余20包打1卡板。\n标签：贴外贸专用标签\n注意事项：\n出货前提供产品内部检测报告\n出货日期：2026\xa0年6月12日\n出货方式：40尺整柜出货', '6月12日', '已审核', '外贸部A组', 'HT20260423BS02', '宏昊抬头', '正常单', '刘洁婷', '2026年5月12日 20:38', '下单', '', '', '', '250')
+Row 3: ('姚彬', 'WA524', 'A-66BA', '皂洗剂', '', '25', 12500, '无调价', '无样品跟货', '液体：用蓝色50公斤共250桶，全新大口桶包装，不用封口纸，内袋扎紧一点，用1.1m*1.1m，18桶/卡板，共13卡板；剩余16桶打1卡板。\n粉：全新白色编织袋无字包装（内有PVC袋），25kg袋共500袋，用1.1*1.1卡板，40包/卡板，共12卡板；剩余20包打1卡板。\n标签：贴外贸专用标签\n注意事项：\n出货前提供产品内部检测报告\n出货日期：2026\xa0年6月12日\n出货方式：40尺整柜出货', '6月11日', '已审核', '外贸部A组', 'HT20260423BS02', '宏昊抬头', '正常单', '刘洁婷', '2026年5月12日 20:20', '下单', '', '', '', '500')
+Row 4: ('姚彬', 'WA368', 'K70-EB', '固色剂', '固色剂', '50', 12500, '无调价', '无样品跟货', '液体：用蓝色50公斤共250桶，全新大口桶包装，不用封口纸，内袋扎紧一点，用1.1m*1.1m，18桶/卡板，共13卡板；剩余16桶打1卡板。\n粉：全新白色编织袋无字包装（内有PVC袋），25kg袋共500袋，用1.1*1.1卡板，40包/卡板，共12卡板；剩余20包打1卡板。\n标签：贴外贸专用标签\n注意事项：\n出货前提供产品内部检测报告\n出货日期：2026\xa0年5月12日\n出货方式：40尺整柜出货', '5月12日', '已审核', '外贸部A组', 'HT20260423BS01', '宏昊抬头', '正常单', '李雪', '2026年5月5日 16:12', '下单', '', '', '', '250')
+
+
+=== Proforma Invoice ===
+Sheet: Sheet1
+Total rows: 46, Total cols: 6
+
+All content:
+Row 1: ['           HONGHAO CHEMICAL CO., LTD.']
+Row 2: ['                       COMPREHENSIVE BUILDING,NO. 13 CHUANGXIN ROAD,JIANGGU FINE CHEMICAL INDUSTRIAL AREA,JIANGGU,SIHUI,GUANGDONG,CHINA']
+Row 3: ['TEL:  0086-758-3267663   FAX: 0086-758-3115313\n']
+Row 4: ['                                       China factory: Bailian Tree Park，Taihe，Qingxin，Qingyuan，Guangdong，China']
+Row 5: ['       TEL :+86-763-5822256       FAX  :+86-763-5822257']
+Row 7: ['PROFORMA  INVOICE ']
+Row 8: ['Consignee:', 'Date:']
+Row 9: ['Name : TOA-DOVECHEM INDUSTRIES CO., LTD', 46085.0]
+Row 10: ['Saowanee', 'PO No.:   ']
+Row 11: ['Add.: 31/5 Moo 3 , Bangna Trad Rd. KM 23 , Bangsaothong , Amphur Bangsaothong, Samutprakarn 10570, Thailand.']
+Row 12: [' ']
+Row 13: ['The undersigned Seller and Buyer Have agreed t o close the following transactions accrediting to the terms and conditions below:', 'PI No.:']
+Row 14: ['HT260304E01']
+Row 15: ['DESCRIPTION OF GOODS.', 'QUANTITY (kg)', 'CIF LAT KRABANG\n (CNY with no Tax）', 'Amount  (CNY)']
+Row 16: ['(SILICONE) SOFTENER HT-MD41', 2400.0, 29.5, 70800.0]
+Row 19: ['TOTAL :', 2400.0, 70800.0]
+Row 20: ['100% payment(CNY):', 70800.0]
+Row 22: ['Total Amount', 70800.0, 'REMARKS']
+Row 23: ['1. Packing: 120kg export standard packing.']
+Row 24: [' ', '2. This order will be delivered by sea (LCL shipment).']
+Row 25: ['TOTAL CNY CURRENCY:SEVENTY THOUSAND EIGHT HUNDRED ONLY']
+Row 26: ['Payment terms and conditions：']
+Row 27: ['1.  H.S. Code : 3910000000']
+Row 28: ['2.  Payment Terms: TT,100% payment again BL copy.']
+Row 29: ['3.  Destination : LAT KRABANG']
+Row 30: ['4.  Beneficiary Bank: INDUSTRIAL AND COMMERCIAL BANK OF CHINA ZHAOQING SIHUI CITY GREEN SUB-BRANCH']
+Row 31: ['5.  Beneficiary Name: HONGHAO CHEMICAL CO., LTD.']
+Row 32: ['6.  Beneficiary company Address: COMPREHENSIVE BUILDING,NO. 13 CHUANGXIN ROAD,JIANGGU FINE CHEMICAL ']
+Row 33: ['     INDUSTRIAL AREA,JIANGGU,SIHUI,GUANGDONG,CHINA']
+Row 34: ['7.  Beneficiary Bank A/C: 2017020219200012555']
+Row 35: ['8.  Beneficiary Bank SWIFT Code:102593202028']
+Row 36: ['9.  Country of origin: China']
+Row 38: ['AWB #     I hereby certify that this shipment doesnot CONTAIN ANY NARCOTICS, drugs, contraband items or any other IATA restricted items. If any Such Material is discovered from this shipment during Inspection I shall be held responsible.']
+Row 40: ['The Seller:', 'The Buyer:']
+Row 41: ['Authorized Signature', 'Authorized Signature']
+Row 42: ['HONGHAO CHEMICAL CO., LTD.']
+Row 45: ['Marketing Depepartment']
+Row 46: ['Date : 2026-3-4', 'Date:']

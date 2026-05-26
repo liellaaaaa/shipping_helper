@@ -1,0 +1,17 @@
+{
+    "发货人": "广东宏昊化工有限公司",
+    "公司地址": "广东省四会市江谷镇精细化工产业园区创新大道13号",
+    "电话": "0086-758-3267663",
+    "传真": "0086-758-3115313",
+
+    "paths": {
+        "product_codes_json": "reference/product_codes.json",
+        "product_codes_excel": "data/01_下单生产/2024.12.5 最新出口商品编码及报关成分.xlsx",
+        "pi_contract": "data/01_下单生产/外贸订单PI合同.xlsx",
+        "order_table": "data/01_下单生产/外贸销售订单表.xlsx",
+        "msds_template_cn": "data/02_订舱出货/还原清洗剂 中文 MSDS.doc",
+        "msds_template_en": "data/02_订舱出货/MSDS for REDUCING &CLEANING AGENT还原清洗剂.doc",
+        "loi_template_non_hazard": "data/02_订舱出货/LOI-op-非危险品保函.docx",
+        "loi_template_liquid": "data/02_订舱出货/LOI-op-液体保函.docx"
+    }
+}
