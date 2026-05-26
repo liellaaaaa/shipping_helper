@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTextEdit, QPushButton, QLabel, QMessageBox,
                              QTableWidget, QTableWidgetItem, QScrollArea,
                              QGroupBox, QLineEdit, QApplication, QHeaderView,
-                             QComboBox, QCheckBox)
+                             QComboBox, QCheckBox, QGridLayout)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QClipboard
 import json
@@ -63,19 +63,27 @@ class MainWindow(QMainWindow):
 
     def _create_input_panel(self) -> QWidget:
         """创建输入面板"""
-        panel = QGroupBox("数据输入")
+        panel = QWidget()
         layout = QVBoxLayout()
+        panel.setLayout(layout)
 
-        layout.addWidget(QLabel("外贸销售订单表粘贴:"))
+        order_label = QLabel("外贸销售订单表粘贴:")
+        order_label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(order_label)
+
         self.order_text_edit = QTextEdit()
         self.order_text_edit.setPlaceholderText("从在线表格复制一行数据，粘贴至此...")
-        self.order_text_edit.setMinimumHeight(200)
+        self.order_text_edit.setMinimumHeight(120)
         self.order_text_edit.setFont(QFont("Microsoft YaHei", 10))
         self.order_text_edit.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.order_text_edit.setMaximumWidth(350)  # 限制宽度，超出自动换行
+        self.order_text_edit.setMaximumWidth(400)
+        self.order_text_edit.textChanged.connect(self._on_order_text_changed)
         layout.addWidget(self.order_text_edit)
 
-        layout.addWidget(QLabel("PI文件 (.xls):"))
+        pi_label = QLabel("PI文件 (.xls):")
+        pi_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(pi_label)
+
         pi_layout = QHBoxLayout()
         self.pi_path_edit = QLineEdit()
         self.pi_path_edit.setPlaceholderText("选择PI文件路径...")
@@ -85,14 +93,53 @@ class MainWindow(QMainWindow):
         pi_layout.addWidget(self.btn_select_pi)
         layout.addLayout(pi_layout)
 
-        self.btn_calculate = QPushButton("开始计算")
+        self.btn_calculate = QPushButton("开始解析")
+        self.btn_calculate.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                padding: 8px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #45a049; }
+        """)
         self.btn_calculate.clicked.connect(self.calculate)
         layout.addWidget(self.btn_calculate)
+
+        preview_label = QLabel("解析结果预览:")
+        preview_label.setStyleSheet("font-weight: bold; margin-top: 15px;")
+        layout.addWidget(preview_label)
+
+        # PI预览区域
+        self.pi_preview_widget = QWidget()
+        self.pi_preview_layout = QGridLayout()
+        self.pi_preview_layout.setSpacing(5)
+        self.pi_preview_widget.setLayout(self.pi_preview_layout)
+
+        self.preview_labels = {}
+        preview_fields = [
+            ('收货人', 0, 0), ('收货人地址', 0, 2),
+            ('日期', 1, 0), ('PI号', 1, 2),
+            ('品名英文', 2, 0), ('数量', 2, 2),
+            ('单价', 3, 0), ('金额', 3, 2),
+            ('H.S.Code', 4, 0), ('卸货港', 4, 2),
+            ('包装说明', 5, 0),
+        ]
+        for field, row, col in preview_fields:
+            lbl = QLabel("-")
+            lbl.setWordWrap(True)
+            lbl.setStyleSheet("background-color: #f5f5f5; padding: 3px; border-radius: 3px;")
+            self.pi_preview_layout.addWidget(QLabel(f"{field}:"), row, col)
+            self.pi_preview_layout.addWidget(lbl, row, col + 1)
+            self.preview_labels[field] = lbl
+
+        layout.addWidget(self.pi_preview_widget)
 
         self.knowledge_label = QLabel("知识库状态：未加载")
         layout.addWidget(self.knowledge_label)
 
-        panel.setLayout(layout)
+        layout.addStretch()
         return panel
 
     def _create_result_panel(self) -> QWidget:
@@ -205,6 +252,24 @@ class MainWindow(QMainWindow):
 
         self.package_calculator = PackageCalculator(packaging_file)
 
+    def _on_order_text_changed(self):
+        """订单文本变化时，将tab替换为换行"""
+        text = self.order_text_edit.toPlainText()
+        if '\t' in text:
+            cursor = self.order_text_edit.textCursor()
+            cursor.movePosition(cursor.End)
+            self.order_text_edit.setPlainText(text.replace('\t', '\n'))
+            cursor.movePosition(cursor.End)
+            self.order_text_edit.setTextCursor(cursor)
+
+    def _update_pi_preview(self, pi_data: dict):
+        """更新PI预览区域"""
+        for field, lbl in self.preview_labels.items():
+            value = pi_data.get(field, '-')
+            if isinstance(value, float):
+                value = f"{value:.2f}" if field in ['单价', '金额'] else f"{value:.0f}"
+            lbl.setText(str(value) if value else '-')
+
     def select_pi_file(self):
         """选择PI文件"""
         from PyQt5.QtWidgets import QFileDialog
@@ -236,6 +301,9 @@ class MainWindow(QMainWindow):
             pi_data = self.pi_extractor.parse_file(pi_path)
         else:
             pi_data = {}
+
+        # 更新PI预览
+        self._update_pi_preview(pi_data)
 
         internal_code = self.order_parser.get_internal_code()
         if internal_code:
