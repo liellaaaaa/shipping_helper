@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+
+# Company files (DO NOT COMMIT)
+shipping_helper/01.*/
+shipping_helper/02.*/
+shipping_helper_old/
+
+# Temporary files
+~$*.xls*
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
