@@ -229,6 +229,10 @@ class OrderParser:
         if not text:
             return False
 
+        # 【新增】识别订单要求内嵌的编号内容（1、2、3、或 1. 2. 3.）
+        if re.match(r'^\d+[.、]', text):
+            return False
+
         real_markers = [
             '已审核', '待审核',
             '正常单',
