@@ -83,7 +83,6 @@ class MainWindow(QMainWindow):
         self.order_text_edit.setMinimumHeight(80)
         self.order_text_edit.setFont(QFont("Microsoft YaHei", 10))
         self.order_text_edit.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.order_text_edit.setMaximumWidth(450)
         self.order_text_edit.textChanged.connect(self._on_order_text_changed)
         input_layout.addWidget(self.order_text_edit)
 
@@ -128,7 +127,6 @@ class MainWindow(QMainWindow):
         self.btn_add_item.clicked.connect(self._add_order_item)
 
         btn_row.addWidget(self.btn_calculate)
-        btn_row.addWidget(self.btn_add_item)
         btn_row.addStretch()
         input_layout.addLayout(btn_row)
 
@@ -138,8 +136,8 @@ class MainWindow(QMainWindow):
         input_group.setLayout(input_layout)
         layout.addWidget(input_group)
 
-        # ===== 合并字段结果 =====
-        self.fields_group = QGroupBox("合并字段结果")
+        # ===== 合并字段结果（外贸订单 + PI） =====
+        self.fields_group = QGroupBox("合并字段结果（外贸订单 + PI）")
         fields_layout = QVBoxLayout()
 
         scroll = QScrollArea()
@@ -245,6 +243,21 @@ class MainWindow(QMainWindow):
 
         package_group.setLayout(package_layout)
         layout.addWidget(package_group)
+
+        # 添加按钮（用于多产品包装）
+        self.btn_add_item = QPushButton("添加产品")
+        self.btn_add_item.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                font-weight: bold;
+                padding: 8px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #1976D2; }
+        """)
+        self.btn_add_item.clicked.connect(self._add_order_item)
+        layout.addWidget(self.btn_add_item)
 
         layout.addStretch()
         return panel
