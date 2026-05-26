@@ -109,13 +109,14 @@ class MainWindow(QMainWindow):
         self.fields_table = QTableWidget()
         self.fields_table.setColumnCount(2)
         self.fields_table.setHorizontalHeaderLabels(["字段名", "值"])
-        self.fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.fields_table.setRowCount(23)
+        # 不使用Stretch，让列宽固定，内容自动换行
+        self.fields_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.fields_table.verticalHeader().setDefaultSectionSize(30)  # 默认行高30
         self.fields_table.setWordWrap(True)
         self.fields_table.cellClicked.connect(self.copy_cell_value)
-        # 设置默认行高
-        for i in range(23):
-            self.fields_table.setRowHeight(i, 25)
+        # 第一列(字段名)固定宽度，第二列(值)允许自动换行
+        self.fields_table.setColumnWidth(0, 100)
+        self.fields_table.setColumnWidth(1, 300)
         fields_layout.addWidget(self.fields_table)
 
         # 移动按钮：当订单要求字段缺失时使用
