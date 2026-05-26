@@ -118,15 +118,15 @@ class MainWindow(QMainWindow):
             self.fields_table.setRowHeight(i, 25)
         fields_layout.addWidget(self.fields_table)
 
-        # 右移按钮：当订单要求字段缺失时使用
+        # 移动按钮：当订单要求字段缺失时使用
         shift_layout = QHBoxLayout()
-        self.btn_shift_right = QPushButton("右移")
-        self.btn_shift_right.clicked.connect(self._shift_values_right)
-        shift_layout.addWidget(self.btn_shift_right)
+        self.btn_shift_up = QPushButton("上移")
+        self.btn_shift_up.clicked.connect(self._shift_values_up)
+        shift_layout.addWidget(self.btn_shift_up)
 
-        self.btn_shift_left = QPushButton("左移")
-        self.btn_shift_left.clicked.connect(self._shift_values_left)
-        shift_layout.addWidget(self.btn_shift_left)
+        self.btn_shift_down = QPushButton("下移")
+        self.btn_shift_down.clicked.connect(self._shift_values_down)
+        shift_layout.addWidget(self.btn_shift_down)
 
         shift_layout.addStretch()
         fields_layout.addLayout(shift_layout)
@@ -327,7 +327,7 @@ class MainWindow(QMainWindow):
             item = QTableWidgetItem(str(value))
             self.fields_table.setItem(i, 1, item)
 
-    def _shift_values_right(self):
+    def _shift_values_down(self):
         """右移值：从订单要求开始，将值往后移一位"""
         # 从后往前移，避免覆盖
         for i in range(21, 9, -1):
@@ -340,7 +340,7 @@ class MainWindow(QMainWindow):
         self.fields_table.setItem(10, 1, QTableWidgetItem(''))
         self.statusBar().showMessage("已右移，请检查并手动修正", 3000)
 
-    def _shift_values_left(self):
+    def _shift_values_up(self):
         """左移值：将10及之后的值往左移一位"""
         # 从前往后移
         for i in range(10, 22):
