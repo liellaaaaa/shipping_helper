@@ -221,6 +221,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "警告", "请粘贴订单表数据")
             return
 
+        # 将Tab替换为换行，便于查看（但保留Tab用于解析）
+        order_text_for_display = order_text.replace('\t', '\n')
+        self.order_text_edit.setPlainText(order_text_for_display)
+
         order_data = self.order_parser.parse(order_text)
         is_valid, msg = self.order_parser.validate()
         if not is_valid:
@@ -330,6 +334,7 @@ class MainWindow(QMainWindow):
             self.fields_table.setItem(i, 0, QTableWidgetItem(name))
             item = QTableWidgetItem(str(value))
             self.fields_table.setItem(i, 1, item)
+        self.fields_table.resizeRowsToContents()
 
     def _shift_values_down(self):
         """下移值：将选中行及之后的值往下移一位"""
@@ -339,14 +344,20 @@ class MainWindow(QMainWindow):
         if current_row >= 22:
             self.statusBar().showMessage("已到最后一行，无法继续下移", 3000)
             return
-        # 从后往前移，避免覆盖
-        for i in range(22, current_row, -1):
-            item = self.fields_table.item(i, 1)
+
+        # 保存选中行的值
+        current_item = self.fields_table.item(current_row, 1)
+        original_value = current_item.text() if current_item else ''
+
+        # 从current_row开始到结尾，所有值上移一位（填到选中行）
+        for i in range(current_row, 22):
+            item = self.fields_table.item(i + 1, 1)
             value = item.text() if item else ''
-            new_item = QTableWidgetItem(value)
-            self.fields_table.setItem(i, 1, new_item)
-        # 选中行清空
-        self.fields_table.setItem(current_row, 1, QTableWidgetItem(''))
+            self.fields_table.setItem(i, 1, QTableWidgetItem(value))
+        # 最后一行清空
+        self.fields_table.setItem(22, 1, QTableWidgetItem(''))
+        # 选中行的值放到下一行
+        self.fields_table.setItem(current_row + 1, 1, QTableWidgetItem(original_value))
         self.fields_table.setCurrentCell(current_row + 1, 1)
         self.statusBar().showMessage(f"已将第{current_row+1}行下移", 3000)
 
@@ -354,24 +365,26 @@ class MainWindow(QMainWindow):
         """上移值：将选中行及之后的值往上移一位"""
         current_row = self.fields_table.currentRow()
         if current_row < 0:
-            current_row = 11  # 默认从第11行开始
+            current_row = 10  # 默认从第10行开始
         if current_row <= 0:
             self.statusBar().showMessage("已到第一行，无法继续上移", 3000)
             return
-        # 从前往后移
-        for i in range(current_row - 1, 22):
-            item = self.fields_table.item(i + 1, 1)
+
+        # 保存选中行的值
+        current_item = self.fields_table.item(current_row, 1)
+        original_value = current_item.text() if current_item else ''
+
+        # 从第0行到current_row-1，所有值下移一位（填到选中行）
+        for i in range(current_row - 1, -1, -1):
+            item = self.fields_table.item(i, 1)
             value = item.text() if item else ''
-            new_item = QTableWidgetItem(value)
-            self.fields_table.setItem(i, 1, new_item)
-        # 最后一行清空
-        self.fields_table.setItem(22, 1, QTableWidgetItem(''))
+            self.fields_table.setItem(i + 1, 1, QTableWidgetItem(value))
+        # 第一行清空
+        self.fields_table.setItem(0, 1, QTableWidgetItem(''))
+        # 选中行的值放到上一行
+        self.fields_table.setItem(current_row - 1, 1, QTableWidgetItem(original_value))
         self.fields_table.setCurrentCell(current_row - 1, 1)
         self.statusBar().showMessage(f"已将第{current_row+1}行上移", 3000)
-
-        # 最后一个字段清空
-        self.fields_table.setItem(22, 1, QTableWidgetItem(''))
-        self.statusBar().showMessage("已左移", 3000)
 
     def copy_cell_value(self, row, col):
         """点击单元格复制值"""
