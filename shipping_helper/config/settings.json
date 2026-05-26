@@ -1,0 +1,14 @@
+{
+  "app": {
+    "name": "ShippingHelper",
+    "version": "1.0.0"
+  },
+  "shipper": "广东宏昊化工有限公司",
+  "knowledge_base": {
+    "products": "knowledge/products_knowledge.json",
+    "packaging": "knowledge/packaging_data.json"
+  },
+  "defaults": {
+    "pallet_type": "1.1*1.1m卡板"
+  }
+}
