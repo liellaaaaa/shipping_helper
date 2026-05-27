@@ -582,7 +582,7 @@ class PackageCalculator:
                 'drum_tare_kg': drum_info['tare_kg'],
                 'drum_gross_kg': drum_info['gross_kg'],
                 'pallet_type': pallet_info['name'],
-                'pallet_tare_kg': pallet_info['tare_kg'],
+                'pallet_tare_kg': pallet_info.get('tare_kg', 0),
                 'total_quantity_kg': total_quantity_kg,
                 'capacity_note': capacity_note,
             },

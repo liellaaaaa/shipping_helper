@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTableWidget, QTableWidgetItem, QScrollArea,
                              QGroupBox, QLineEdit, QApplication, QHeaderView,
                              QComboBox, QCheckBox, QGridLayout, QSizePolicy,
-                             QRadioButton, QButtonGroup)
+                             QRadioButton, QButtonGroup, QTabWidget)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QClipboard
 import json
@@ -22,7 +22,7 @@ from ui.booking_widget import BookingWidget
 
 
 class MainWindow(QMainWindow):
-    """主窗口"""
+    """主窗口 - Phase 1 & Phase 2 整合"""
 
     def __init__(self):
         super().__init__()
@@ -34,40 +34,51 @@ class MainWindow(QMainWindow):
         self._current_order_req = ''
         self._suppress_text_changed = False
         self._order_items = []  # 存储多个订单项
+        self.booking_widget = None  # Phase 2 widget
 
         self._load_knowledge()
         self._init_ui()
 
     def _init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("ShippingHelper - Phase 1: 订单数据提取与包装计算")
-        self.setGeometry(100, 100, 1400, 750)
+        self.setWindowTitle("ShippingHelper - Phase 1 & Phase 2 整合")
+        self.setGeometry(100, 100, 1400, 800)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        main_layout = QHBoxLayout()
-        central_widget.setLayout(main_layout)
+        # 创建Tab组件
+        self.main_tabs = QTabWidget()
+        central_layout = QVBoxLayout()
+        central_layout.addWidget(self.main_tabs)
+        central_widget.setLayout(central_layout)
 
-        # 左侧：输入区 + 合并字段结果
-        left_widget = self._create_left_panel()
-        main_layout.addWidget(left_widget, 2)
+        # Tab 1: Phase 1 - 订单处理
+        self.phase1_widget = self._create_phase1_widget()
+        self.main_tabs.addTab(self.phase1_widget, "Phase 1 - 订单处理")
 
-        # 右侧：订单要求 + 包装计算
-        right_widget = self._create_right_panel()
-        main_layout.addWidget(right_widget, 3)
-
-        bottom_layout = QHBoxLayout()
-        self.btn_phase2 = QPushButton("进入 Phase 2")
-        self.btn_phase2.setEnabled(False)
-        self.btn_phase2.clicked.connect(self.enter_phase2)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.btn_phase2)
-
-        main_layout.addLayout(bottom_layout)
+        # Tab 2: Phase 2 - 订舱出货
+        self.booking_widget = BookingWidget(self, {})
+        self.main_tabs.addTab(self.booking_widget, "Phase 2 - 订舱出货")
 
         # 初始化时自动填充每板数量
         self._auto_fill_per_pallet()
+
+    def _create_phase1_widget(self) -> QWidget:
+        """创建Phase 1主Widget"""
+        widget = QWidget()
+        layout = QHBoxLayout()
+        widget.setLayout(layout)
+
+        # 左侧：输入区 + 合并字段结果
+        left_widget = self._create_left_panel()
+        layout.addWidget(left_widget, 2)
+
+        # 右侧：订单要求 + 包装计算
+        right_widget = self._create_right_panel()
+        layout.addWidget(right_widget, 3)
+
+        return widget
 
     def _create_left_panel(self) -> QWidget:
         """创建左侧面板：输入区 + 合并字段结果"""
@@ -530,7 +541,8 @@ class MainWindow(QMainWindow):
         self._recalculate_package()
         self._update_result_ui()
 
-        self.btn_phase2.setEnabled(True)
+        # 自动导入数据到 Phase 2
+        self._import_data_to_phase2()
 
     def _build_merged_data(self, order_data, pi_data, code_info) -> dict:
         """构建合并数据"""
@@ -895,16 +907,21 @@ class MainWindow(QMainWindow):
         self.package_table.setRowCount(0)
         self._update_package_totals()
 
-    def enter_phase2(self):
-        """进入Phase 2"""
-        # 构建Phase 1的数据字典
-        phase1_data = self.merged_data.copy()
+    def _import_data_to_phase2(self):
+        """将Phase 1数据导入到Phase 2"""
+        if self.booking_widget and self.merged_data:
+            self.booking_widget.set_phase1_data(self.merged_data)
 
-        # 获取包装计算结果
+            # 获取包装数据
+            package_data = self._get_package_data()
+            if package_data:
+                self.booking_widget.set_package_data(package_data)
+
+    def _get_package_data(self) -> dict:
+        """获取包装计算结果"""
         package_data = {}
         row_count = self.package_table.rowCount()
         if row_count > 0:
-            # 取第一行的包装数据作为主包装信息
             pkg_type = self.package_table.item(0, 1).text() if self.package_table.item(0, 1) else ""
             qty = self.package_table.item(0, 2).text() if self.package_table.item(0, 2) else "0"
             drums = self.package_table.item(0, 3).text() if self.package_table.item(0, 3) else "0"
@@ -920,23 +937,10 @@ class MainWindow(QMainWindow):
                 "volume_cbm": volume.replace(" CBM", ""),
                 "gross_weight_kg": weight.replace(" kg", ""),
             }
+            pallet_type = self.pallet_combo.currentText()
+            package_data["pallet_type"] = pallet_type
+        return package_data
 
-        # 获取卡板类型
-        pallet_type = self.pallet_combo.currentText()
-        package_data["pallet_type"] = pallet_type
-
-        # 创建并显示BookingWidget
-        self.booking_widget = BookingWidget(self, phase1_data)
-        self.booking_widget.set_package_data(package_data)
-
-        # 在新窗口中显示
-        from PyQt5.QtWidgets import QDialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Phase 2: 订舱出货")
-        dialog.setGeometry(150, 50, 1200, 700)
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.booking_widget)
-        dialog.setLayout(layout)
-
-        dialog.exec_()
+    def enter_phase2(self):
+        """进入Phase 2（切换Tab）"""
+        self.main_tabs.setCurrentIndex(1)

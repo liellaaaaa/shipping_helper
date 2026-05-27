@@ -43,7 +43,29 @@ class ReportParser:
             return self._parse_pdf(filepath)
         elif ext in ['.docx']:
             return self._parse_docx(filepath)
+        elif ext in ['.xls', '.xlsx']:
+            return self._parse_excel(filepath)
         else:
+            return None
+
+    def _parse_excel(self, filepath: str) -> Optional[CargoInfo]:
+        """解析Excel格式的运输鉴定报告"""
+        try:
+            import xlrd
+            wb = xlrd.open_workbook(filepath, encoding_override='utf-8')
+            sh = wb.sheet_by_index(0)
+
+            full_text = ""
+            for r in range(sh.nrows):
+                for c in range(sh.ncols):
+                    val = sh.cell_value(r, c)
+                    if val:
+                        full_text += str(val) + "\n"
+
+            return self._extract_cargo_info(full_text, filepath)
+
+        except Exception as e:
+            print(f"Excel解析失败 {filepath}: {e}")
             return None
 
     def _parse_pdf(self, filepath: str) -> Optional[CargoInfo]:

@@ -17,7 +17,6 @@ from .report_parser import ReportParser
 from .msds_parser import MSDSParser
 from .booking_generator import BookingGenerator
 from .msds_generator import MSDSGenerator
-from .loi_generator import LOIGenerator
 
 __all__ = [
     'Component',
@@ -32,5 +31,4 @@ __all__ = [
     'MSDSParser',
     'BookingGenerator',
     'MSDSGenerator',
-    'LOIGenerator',
 ]
