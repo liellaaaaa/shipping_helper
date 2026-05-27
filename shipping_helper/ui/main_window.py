@@ -215,56 +215,86 @@ class MainWindow(QMainWindow):
         package_group = QGroupBox("包装计算")
         package_layout = QVBoxLayout()
 
-        # 桶类型选择
-        drum_row = QHBoxLayout()
-        drum_row.addWidget(QLabel("桶类型:"))
-        self.drum_combo = QComboBox()
-        self.drum_combo.addItems(self.package_calculator.get_package_options())
-        self.drum_combo.currentTextChanged.connect(self._on_package_changed)
-        drum_row.addWidget(self.drum_combo)
-        drum_row.addStretch()
-        package_layout.addLayout(drum_row)
+        # 包装类型选择
+        pkg_type_row = QHBoxLayout()
+        pkg_type_row.addWidget(QLabel("包装类型:"))
+        self.pkg_type_combo = QComboBox()
+        self.pkg_type_combo.addItems(self.package_calculator.get_package_options())
+        self.pkg_type_combo.setStyleSheet("font-size: 13px; padding: 5px;")
+        pkg_type_row.addWidget(self.pkg_type_combo)
+        pkg_type_row.addStretch()
+        package_layout.addLayout(pkg_type_row)
+
+        # 数量输入
+        qty_row = QHBoxLayout()
+        qty_row.addWidget(QLabel("数量(kg):"))
+        self.pkg_qty_edit = QLineEdit()
+        self.pkg_qty_edit.setPlaceholderText("输入数量...")
+        self.pkg_qty_edit.setStyleSheet("font-size: 13px; padding: 5px;")
+        qty_row.addWidget(self.pkg_qty_edit)
+        qty_row.addStretch()
+        package_layout.addLayout(qty_row)
 
         # 卡板选择
         pallet_row = QHBoxLayout()
         pallet_row.addWidget(QLabel("卡板:"))
         self.pallet_combo = QComboBox()
         self.pallet_combo.addItems(self.package_calculator.get_pallet_options())
-        self.pallet_combo.currentTextChanged.connect(self._on_package_changed)
+        self.pallet_combo.setStyleSheet("font-size: 13px; padding: 5px;")
         pallet_row.addWidget(self.pallet_combo)
         pallet_row.addStretch()
         package_layout.addLayout(pallet_row)
 
         # 不打卡板选项
         self.no_pallet_check = QCheckBox("不打卡板")
-        self.no_pallet_check.stateChanged.connect(self._on_package_changed)
         package_layout.addWidget(self.no_pallet_check)
 
         # 包装计算表格（多产品支持）
         self.package_table = QTableWidget()
-        self.package_table.setColumnCount(7)
+        self.package_table.setColumnCount(8)
         self.package_table.setHorizontalHeaderLabels([
-            "产品", "桶类型", "数量(kg)", "桶数", "卡板数", "体积(CBM)", "20GP"
+            "序号", "包装类型", "数量(kg)", "桶数", "卡板数", "体积(CBM)", "20GP", "操作"
         ])
         self.package_table.verticalHeader().setDefaultSectionSize(28)
-        self.package_table.setColumnWidth(0, 120)
+        self.package_table.setColumnWidth(0, 40)
         self.package_table.setColumnWidth(1, 100)
         self.package_table.setColumnWidth(2, 70)
         self.package_table.setColumnWidth(3, 50)
         self.package_table.setColumnWidth(4, 50)
         self.package_table.setColumnWidth(5, 70)
         self.package_table.setColumnWidth(6, 60)
-        self.package_table.setRowCount(1)
+        self.package_table.setColumnWidth(7, 50)
+        self.package_table.setRowCount(0)
         self.package_table.resizeRowsToContents()
         package_layout.addWidget(self.package_table)
 
         # 按钮行
         btn_row2 = QHBoxLayout()
         self.btn_calculate_item = QPushButton("计算")
+        self.btn_calculate_item.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #45a049; }
+        """)
         self.btn_calculate_item.clicked.connect(self._calculate_package_item)
         btn_row2.addWidget(self.btn_calculate_item)
 
         self.btn_clear_items = QPushButton("清除")
+        self.btn_clear_items.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #d32f2f; }
+        """)
         self.btn_clear_items.clicked.connect(self._clear_package_items)
         btn_row2.addWidget(self.btn_clear_items)
         btn_row2.addStretch()
@@ -273,22 +303,6 @@ class MainWindow(QMainWindow):
         package_group.setLayout(package_layout)
         layout.addWidget(package_group)
 
-        # 添加按钮（用于多产品包装）
-        self.btn_add_item = QPushButton("添加产品")
-        self.btn_add_item.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                font-weight: bold;
-                padding: 8px;
-                border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #1976D2; }
-        """)
-        self.btn_add_item.clicked.connect(self._add_package_item)
-        layout.addWidget(self.btn_add_item)
-
-        layout.addStretch()
         return panel
 
     def _load_knowledge(self):
@@ -547,31 +561,82 @@ class MainWindow(QMainWindow):
         self._calculate_package_item()
 
     def _calculate_package_item(self):
-        """计算包装表格中选中行的包装"""
-        current_row = self.package_table.currentRow()
-        if current_row < 0:
-            current_row = 0
+        """计算包装：使用当前选择的类型和数量，添加新行到表格"""
+        pkg_type = self.pkg_type_combo.currentText()
+        qty_text = self.pkg_qty_edit.text().strip()
+        pallet_type = self.pallet_combo.currentText()
 
-        # 获取当前行数据
-        product_name = self.package_table.item(current_row, 0)
-        product_name = product_name.text() if product_name else ''
-
-        qty_item = self.package_table.item(current_row, 2)
         try:
-            qty = float(qty_item.text()) if qty_item and qty_item.text() else 0
+            qty = float(qty_text) if qty_text else 0
         except:
             qty = 0
 
-        drum_type = self.drum_combo.currentText()
-        pallet_type = self.pallet_combo.currentText()
-
         if qty <= 0:
+            QMessageBox.warning(self, "警告", "请输入有效的数量")
             return
 
         if self.no_pallet_check.isChecked():
-            result = self.package_calculator.calculate_no_pallet(drum_type, qty)
+            result = self.package_calculator.calculate_no_pallet(pkg_type, qty)
         else:
-            result = self.package_calculator.calculate_with_pallet(drum_type, pallet_type, qty)
+            result = self.package_calculator.calculate_with_pallet(pkg_type, pallet_type, qty)
+
+        if 'error' in result:
+            QMessageBox.warning(self, "错误", result['error'])
+            return
+
+        res = result.get('result', {})
+        container = result.get('container_fit', {})
+
+        # 添加新行
+        row = self.package_table.rowCount()
+        self.package_table.insertRow(row)
+
+        # 填充数据
+        self.package_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))  # 序号
+        self.package_table.setItem(row, 1, QTableWidgetItem(pkg_type))  # 包装类型
+        self.package_table.setItem(row, 2, QTableWidgetItem(str(int(qty))))  # 数量
+        self.package_table.setItem(row, 3, QTableWidgetItem(str(int(res.get('total_drums', 0)))))  # 桶数
+        if self.no_pallet_check.isChecked():
+            self.package_table.setItem(row, 4, QTableWidgetItem('无'))
+        else:
+            self.package_table.setItem(row, 4, QTableWidgetItem(str(int(res.get('total_pallets', 0)))))  # 卡板数
+        self.package_table.setItem(row, 5, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))  # 体积
+
+        fits_20gp = container.get('fits_20gp', False)
+        full_loads = container.get('full_20gp_loads', 0)
+        if fits_20gp:
+            self.package_table.setItem(row, 6, QTableWidgetItem(f"{full_loads}个"))
+        else:
+            self.package_table.setItem(row, 6, QTableWidgetItem('不能'))
+
+        # 删除按钮（简化处理，清空数量列）
+        del_btn = QPushButton("删除")
+        del_btn.clicked.connect(lambda: self._delete_package_row(row))
+        self.package_table.setCellWidget(row, 7, del_btn)
+
+        self._update_package_totals()
+
+    def _delete_package_row(self, row):
+        """删除指定行"""
+        if 0 <= row < self.package_table.rowCount():
+            self.package_table.removeRow(row)
+            self._update_package_totals()
+
+    def _recalculate_package(self):
+        """重新计算包装（初始产品）"""
+        if not hasattr(self, '_current_order_qty') or self._current_order_qty <= 0:
+            return
+
+        pkg_type = self.pkg_type_combo.currentText()
+        pallet_type = self.pallet_combo.currentText()
+        total_qty = self._current_order_qty
+
+        if self.no_pallet_check.isChecked():
+            result = self.package_calculator.calculate_no_pallet(pkg_type, total_qty)
+        else:
+            result = self.package_calculator.calculate_with_pallet(pkg_type, pallet_type, total_qty)
+
+        self.package_result = result
 
         if 'error' in result:
             return
@@ -579,20 +644,26 @@ class MainWindow(QMainWindow):
         res = result.get('result', {})
         container = result.get('container_fit', {})
 
-        # 更新表格
-        self.package_table.setItem(current_row, 3, QTableWidgetItem(str(int(res.get('total_drums', 0)))))
+        # 添加一行到表格
+        row = self.package_table.rowCount()
+        self.package_table.insertRow(row)
+
+        self.package_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
+        self.package_table.setItem(row, 1, QTableWidgetItem(pkg_type))
+        self.package_table.setItem(row, 2, QTableWidgetItem(str(int(total_qty))))
+        self.package_table.setItem(row, 3, QTableWidgetItem(str(int(res.get('total_drums', 0)))))
         if self.no_pallet_check.isChecked():
-            self.package_table.setItem(current_row, 4, QTableWidgetItem('无'))
+            self.package_table.setItem(row, 4, QTableWidgetItem('无'))
         else:
-            self.package_table.setItem(current_row, 4, QTableWidgetItem(str(int(res.get('total_pallets', 0)))))
-        self.package_table.setItem(current_row, 5, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))
+            self.package_table.setItem(row, 4, QTableWidgetItem(str(int(res.get('total_pallets', 0)))))
+        self.package_table.setItem(row, 5, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))
 
         fits_20gp = container.get('fits_20gp', False)
         full_loads = container.get('full_20gp_loads', 0)
         if fits_20gp:
-            self.package_table.setItem(current_row, 6, QTableWidgetItem(f"{full_loads}个"))
+            self.package_table.setItem(row, 6, QTableWidgetItem(f"{full_loads}个"))
         else:
-            self.package_table.setItem(current_row, 6, QTableWidgetItem('不能'))
+            self.package_table.setItem(row, 6, QTableWidgetItem('不能'))
 
         self._update_package_totals()
 
@@ -640,33 +711,7 @@ class MainWindow(QMainWindow):
 
     def _clear_package_items(self):
         """清除包装计算表格"""
-        self.package_table.setRowCount(1)
-        for col in range(7):
-            self.package_table.setItem(0, col, QTableWidgetItem(''))
-
-    def _add_package_item(self):
-        """添加包装产品项"""
-        current_row = self.package_table.currentRow()
-        if current_row < 0:
-            current_row = self.package_table.rowCount() - 1
-
-        # 在当前行后插入新行
-        self.package_table.insertRow(current_row + 1)
-
-        # 预填产品名和数量（如果有合并数据）
-        if hasattr(self, 'merged_data') and self.merged_data:
-            pi_name = self.merged_data.get('品名英文', '')
-            if pi_name:
-                self.package_table.setItem(current_row + 1, 0, QTableWidgetItem(pi_name))
-            order_qty = self.merged_data.get('订单量kg', '')
-            if order_qty:
-                self.package_table.setItem(current_row + 1, 2, QTableWidgetItem(str(order_qty)))
-
-        self.package_table.setCurrentCell(current_row + 1, 0)
-
-    def _add_order_item(self):
-        """添加订单项（兼容旧调用）"""
-        self._add_package_item()
+        self.package_table.setRowCount(0)
 
     def enter_phase2(self):
         """进入Phase 2（预留接口）"""
