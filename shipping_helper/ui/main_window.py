@@ -376,12 +376,12 @@ class MainWindow(QMainWindow):
         # 更新订单要求编辑框
         self.order_req_edit.setPlainText(order_req)
 
-        # 智能推荐桶类型
+        # 智能推荐包装类型
         if order_req and '粉' in order_req:
-            for i in range(self.drum_combo.count()):
-                name = self.drum_combo.itemText(i)
+            for i in range(self.pkg_type_combo.count()):
+                name = self.pkg_type_combo.itemText(i)
                 if '纸桶' in name or '编织' in name or '25kg' in name:
-                    self.drum_combo.setCurrentIndex(i)
+                    self.pkg_type_combo.setCurrentIndex(i)
                     break
 
         self._recalculate_package()
