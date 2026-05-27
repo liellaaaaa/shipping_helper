@@ -242,6 +242,13 @@ class MainWindow(QMainWindow):
         self.pallet_combo.addItems(self.package_calculator.get_pallet_options())
         self.pallet_combo.setStyleSheet("font-size: 13px; padding: 5px;")
         pallet_row.addWidget(self.pallet_combo)
+
+        pallet_row.addSpacing(20)
+        pallet_row.addWidget(QLabel("每板数量:"))
+        self.per_pallet_edit = QLineEdit()
+        self.per_pallet_edit.setPlaceholderText("留空用默认值")
+        self.per_pallet_edit.setStyleSheet("font-size: 13px; padding: 5px; width: 60px;")
+        pallet_row.addWidget(self.per_pallet_edit)
         pallet_row.addStretch()
         package_layout.addLayout(pallet_row)
 
@@ -251,21 +258,20 @@ class MainWindow(QMainWindow):
 
         # 包装计算表格（多产品支持）
         self.package_table = QTableWidget()
-        self.package_table.setColumnCount(10)
+        self.package_table.setColumnCount(9)
         self.package_table.setHorizontalHeaderLabels([
-            "序号", "包装类型", "数量(kg)", "桶数", "卡板组", "卡板数", "体积(CBM)", "毛重(kg)", "20GP", "操作"
+            "序号", "包装类型", "数量(kg)", "桶数", "卡板数", "体积(CBM)", "毛重(kg)", "20GP", "操作"
         ])
         self.package_table.verticalHeader().setDefaultSectionSize(28)
         self.package_table.setColumnWidth(0, 40)
         self.package_table.setColumnWidth(1, 90)
         self.package_table.setColumnWidth(2, 60)
         self.package_table.setColumnWidth(3, 40)
-        self.package_table.setColumnWidth(4, 70)
-        self.package_table.setColumnWidth(5, 50)
+        self.package_table.setColumnWidth(4, 55)
+        self.package_table.setColumnWidth(5, 65)
         self.package_table.setColumnWidth(6, 65)
-        self.package_table.setColumnWidth(7, 65)
-        self.package_table.setColumnWidth(8, 55)
-        self.package_table.setColumnWidth(9, 50)
+        self.package_table.setColumnWidth(7, 55)
+        self.package_table.setColumnWidth(8, 50)
         self.package_table.setRowCount(0)
         self.package_table.resizeRowsToContents()
         package_layout.addWidget(self.package_table)
@@ -580,7 +586,15 @@ class MainWindow(QMainWindow):
         if self.no_pallet_check.isChecked():
             result = self.package_calculator.calculate_no_pallet(pkg_type, qty)
         else:
-            result = self.package_calculator.calculate_with_pallet(pkg_type, pallet_type, qty)
+            # 检查是否有手动指定的每板数量
+            per_pallet_text = self.per_pallet_edit.text().strip()
+            drums_per_pallet = None
+            if per_pallet_text:
+                try:
+                    drums_per_pallet = int(per_pallet_text)
+                except:
+                    pass
+            result = self.package_calculator.calculate_with_pallet(pkg_type, pallet_type, qty, drums_per_pallet)
 
         if 'error' in result:
             QMessageBox.warning(self, "错误", result['error'])
@@ -599,29 +613,26 @@ class MainWindow(QMainWindow):
         self.package_table.setItem(row, 2, QTableWidgetItem(str(int(qty))))  # 数量
         self.package_table.setItem(row, 3, QTableWidgetItem(str(int(res.get('total_drums', 0)))))  # 桶数
 
-        # 卡板组下拉框
-        group_combo = QComboBox()
-        group_combo.addItems(['卡板组1', '卡板组2', '卡板组3', '卡板组4', '卡板组5'])
-        self.package_table.setCellWidget(row, 4, group_combo)
-
         if self.no_pallet_check.isChecked():
-            self.package_table.setItem(row, 5, QTableWidgetItem('无'))
+            self.package_table.setItem(row, 4, QTableWidgetItem('无'))
         else:
-            self.package_table.setItem(row, 5, QTableWidgetItem(str(int(res.get('total_pallets', 0)))))  # 卡板数
-        self.package_table.setItem(row, 6, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))  # 体积
-        self.package_table.setItem(row, 7, QTableWidgetItem(f"{res.get('gross_weight_kg', 0):.1f}"))  # 毛重
+            pallets_item = QTableWidgetItem(str(int(res.get('total_pallets', 0))))
+            pallets_item.setFlags(pallets_item.flags() | Qt.ItemIsEditable)
+            self.package_table.setItem(row, 4, pallets_item)  # 卡板数（可编辑）
+        self.package_table.setItem(row, 5, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))  # 体积
+        self.package_table.setItem(row, 6, QTableWidgetItem(f"{res.get('gross_weight_kg', 0):.1f}"))  # 毛重
 
         fits_20gp = container.get('fits_20gp', False)
         full_loads = container.get('full_20gp_loads', 0)
         if fits_20gp:
-            self.package_table.setItem(row, 8, QTableWidgetItem(f"{full_loads}个"))
+            self.package_table.setItem(row, 7, QTableWidgetItem(f"{full_loads}个"))
         else:
-            self.package_table.setItem(row, 8, QTableWidgetItem('不能'))
+            self.package_table.setItem(row, 7, QTableWidgetItem('不能'))
 
         # 删除按钮
         del_btn = QPushButton("删除")
         del_btn.clicked.connect(lambda: self._delete_package_row(row))
-        self.package_table.setCellWidget(row, 9, del_btn)
+        self.package_table.setCellWidget(row, 8, del_btn)
 
         self._update_package_totals()
 
@@ -662,25 +673,21 @@ class MainWindow(QMainWindow):
         self.package_table.setItem(row, 2, QTableWidgetItem(str(int(total_qty))))
         self.package_table.setItem(row, 3, QTableWidgetItem(str(int(res.get('total_drums', 0)))))
 
-        # 卡板组下拉框（默认卡板组1）
-        group_combo = QComboBox()
-        group_combo.addItems(['卡板组1', '卡板组2', '卡板组3', '卡板组4', '卡板组5'])
-        group_combo.setCurrentText('卡板组1')
-        self.package_table.setCellWidget(row, 4, group_combo)
-
         if self.no_pallet_check.isChecked():
-            self.package_table.setItem(row, 5, QTableWidgetItem('无'))
+            self.package_table.setItem(row, 4, QTableWidgetItem('无'))
         else:
-            self.package_table.setItem(row, 5, QTableWidgetItem(str(int(res.get('total_pallets', 0)))))
-        self.package_table.setItem(row, 6, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))
-        self.package_table.setItem(row, 7, QTableWidgetItem(f"{res.get('gross_weight_kg', 0):.1f}"))
+            pallets_item = QTableWidgetItem(str(int(res.get('total_pallets', 0))))
+            pallets_item.setFlags(pallets_item.flags() | Qt.ItemIsEditable)
+            self.package_table.setItem(row, 4, pallets_item)
+        self.package_table.setItem(row, 5, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))
+        self.package_table.setItem(row, 6, QTableWidgetItem(f"{res.get('gross_weight_kg', 0):.1f}"))
 
         fits_20gp = container.get('fits_20gp', False)
         full_loads = container.get('full_20gp_loads', 0)
         if fits_20gp:
-            self.package_table.setItem(row, 8, QTableWidgetItem(f"{full_loads}个"))
+            self.package_table.setItem(row, 7, QTableWidgetItem(f"{full_loads}个"))
         else:
-            self.package_table.setItem(row, 8, QTableWidgetItem('不能'))
+            self.package_table.setItem(row, 7, QTableWidgetItem('不能'))
 
         self._update_package_totals()
 
@@ -710,21 +717,21 @@ class MainWindow(QMainWindow):
                 pass
 
             try:
-                pallets_item = self.package_table.item(i, 5)
+                pallets_item = self.package_table.item(i, 4)
                 if pallets_item and pallets_item.text() and pallets_item.text() not in ['无', '']:
                     total_pallets += int(pallets_item.text())
             except:
                 pass
 
             try:
-                cbm_item = self.package_table.item(i, 6)
+                cbm_item = self.package_table.item(i, 5)
                 if cbm_item and cbm_item.text():
                     total_cbm += float(cbm_item.text())
             except:
                 pass
 
             try:
-                gross_item = self.package_table.item(i, 7)
+                gross_item = self.package_table.item(i, 6)
                 if gross_item and gross_item.text():
                     total_gross += float(gross_item.text())
             except:
@@ -743,10 +750,10 @@ class MainWindow(QMainWindow):
         bold_font.setBold(True)
         self.package_table.item(total_row, 0).setFont(bold_font)
         self.package_table.setItem(total_row, 3, QTableWidgetItem(str(total_drums)))
-        self.package_table.setItem(total_row, 5, QTableWidgetItem(str(total_pallets)))
-        self.package_table.setItem(total_row, 6, QTableWidgetItem(f"{total_cbm:.2f}"))
-        self.package_table.setItem(total_row, 7, QTableWidgetItem(f"{total_gross:.1f}"))
-        self.package_table.setItem(total_row, 8, QTableWidgetItem(f"{total_20gp}个"))
+        self.package_table.setItem(total_row, 4, QTableWidgetItem(str(total_pallets)))
+        self.package_table.setItem(total_row, 5, QTableWidgetItem(f"{total_cbm:.2f}"))
+        self.package_table.setItem(total_row, 6, QTableWidgetItem(f"{total_gross:.1f}"))
+        self.package_table.setItem(total_row, 7, QTableWidgetItem(f"{total_20gp}个"))
 
     def _clear_package_items(self):
         """清除包装计算表格"""

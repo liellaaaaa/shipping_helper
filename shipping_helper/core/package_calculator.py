@@ -490,8 +490,15 @@ class PackageCalculator:
         """计算包装需求（打卡板模式）"""
         return self.calculate_with_pallet(drum_name, pallet_name, total_quantity_kg)
 
-    def calculate_with_pallet(self, drum_name: str, pallet_name: str, total_quantity_kg: float) -> dict:
-        """计算包装需求（打卡板模式）"""
+    def calculate_with_pallet(self, drum_name: str, pallet_name: str, total_quantity_kg: float, drums_per_pallet_override: int = None) -> dict:
+        """计算包装需求（打卡板模式）
+
+        Args:
+            drum_name: 桶类型名称
+            pallet_name: 卡板类型名称
+            total_quantity_kg: 总重量(kg)
+            drums_per_pallet_override: 手动指定每板数量，留空则使用JSON中的默认值
+        """
         drum_info = self.find_package(drum_name)
         if not drum_info:
             return {'error': f'未找到桶类型: {drum_name}', 'available': self.get_package_options()}
@@ -501,25 +508,31 @@ class PackageCalculator:
             return {'error': f'未找到卡板类型: {pallet_name}', 'available': self.get_pallet_options()}
 
         pallet_key = pallet_info['size_m']
-        # 查找容量：先精确匹配，如果找不到尝试共享（细口/大口共享容量）
-        capacity = self.pallet_capacity.get(drum_info['name'], {}).get(pallet_key)
-        if capacity is None:
-            # 尝试共享容量：细口和大口视为相同容量
-            if '蓝桶' in drum_info['name'] and ('细口' in drum_info['name'] or '大口' in drum_info['name']):
-                alt_name = drum_info['name'].replace('细口', '大口').replace('大口', '细口')
-                capacity = self.pallet_capacity.get(alt_name, {}).get(pallet_key)
-        if capacity is None:
-            return {
-                'error': f'{drum_info["name"]} 搭配 {pallet_info["name"]}: 需实际测量',
-                'drum': drum_info,
-                'pallet': pallet_info,
-            }
-        # 支持两种格式：整数(数量) 或 元组(数量, 说明)
-        if isinstance(capacity, tuple):
-            drums_per_pallet, capacity_note = capacity
+
+        # 如果手动指定了每板数量，直接使用
+        if drums_per_pallet_override is not None and drums_per_pallet_override > 0:
+            drums_per_pallet = drums_per_pallet_override
+            capacity_note = f"手动指定每板{drums_per_pallet}个"
         else:
-            drums_per_pallet = capacity
-            capacity_note = f"{pallet_key}m卡板可以放{drums_per_pallet}桶"
+            # 查找容量：先精确匹配，如果找不到尝试共享（细口/大口共享容量）
+            capacity = self.pallet_capacity.get(drum_info['name'], {}).get(pallet_key)
+            if capacity is None:
+                # 尝试共享容量：细口和大口视为相同容量
+                if '蓝桶' in drum_info['name'] and ('细口' in drum_info['name'] or '大口' in drum_info['name']):
+                    alt_name = drum_info['name'].replace('细口', '大口').replace('大口', '细口')
+                    capacity = self.pallet_capacity.get(alt_name, {}).get(pallet_key)
+            if capacity is None:
+                return {
+                    'error': f'{drum_info["name"]} 搭配 {pallet_info["name"]}: 需实际测量',
+                    'drum': drum_info,
+                    'pallet': pallet_info,
+                }
+            # 支持两种格式：整数(数量) 或 元组(数量, 说明)
+            if isinstance(capacity, tuple):
+                drums_per_pallet, capacity_note = capacity
+            else:
+                drums_per_pallet = capacity
+                capacity_note = f"{pallet_key}m卡板可以放{drums_per_pallet}桶"
 
         drum_net_kg = drum_info['gross_kg'] - drum_info['tare_kg']
         if drum_net_kg <= 0:
