@@ -49,11 +49,11 @@ class MainWindow(QMainWindow):
 
         # 左侧：输入区 + 合并字段结果
         left_widget = self._create_left_panel()
-        main_layout.addWidget(left_widget, 3)
+        main_layout.addWidget(left_widget, 2)
 
         # 右侧：订单要求 + 包装计算
         right_widget = self._create_right_panel()
-        main_layout.addWidget(right_widget, 2)
+        main_layout.addWidget(right_widget, 3)
 
         bottom_layout = QHBoxLayout()
         self.btn_phase2 = QPushButton("进入 Phase 2")
