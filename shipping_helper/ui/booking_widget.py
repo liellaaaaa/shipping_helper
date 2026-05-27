@@ -3,16 +3,15 @@
 订舱出货模块 - Phase 2 主界面
 左右分栏布局：
 - 左侧：数据看板（展示提取的结构化数据）
-- 右侧：模板编辑区（嵌入Word ActiveX，支持WYSIWYG编辑）
+- 右侧：模板编辑区（QAxWidget嵌入Excel/WPS直接编辑）
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QGroupBox, QScrollArea, QTableWidget,
                              QTableWidgetItem, QHeaderView, QTextEdit, QComboBox,
                              QLineEdit, QTabWidget, QMessageBox, QFileDialog,
-                             QGridLayout, QTableView, QAbstractItemView, QSizePolicy)
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont
+                             QGridLayout, QSizePolicy)
+from PyQt5.QtCore import Qt
 from PyQt5.QAxContainer import QAxWidget
 import os
 import sys
@@ -25,7 +24,6 @@ from core.phase2 import (
     DataMerger,
     ReportParser,
     MSDSParser,
-    BookingGenerator,
     MSDSGenerator,
 )
 
@@ -44,6 +42,8 @@ class BookingWidget(QWidget):
         self.report_parser = ReportParser()
         self.msds_parser = MSDSParser()
         self.output_dir = None  # PI号对应的输出目录
+        self.excel_widget = None  # Excel ActiveX控件
+        self.excel_workbook = None  # 当前打开的工作簿
 
         self._init_ui()
 
@@ -174,7 +174,6 @@ class BookingWidget(QWidget):
         self.msds_components_table.setColumnCount(3)
         self.msds_components_table.setHorizontalHeaderLabels(["组分", "CAS号", "含量"])
         self.msds_components_table.setMaximumHeight(120)
-        # 使用Stretch模式让列宽自适应填满
         self.msds_components_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.msds_components_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         msds_layout.addWidget(self.msds_components_table)
@@ -300,12 +299,15 @@ class BookingWidget(QWidget):
         layout = QVBoxLayout()
         self.booking_tab.setLayout(layout)
 
-        # 订舱单预览表格（显示Excel模板内容）
-        self.booking_table = QTableWidget()
-        self.booking_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.booking_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.booking_table.setFont(QFont("Microsoft YaHei", 9))
-        layout.addWidget(self.booking_table)
+        # 创建QAxWidget（暂不启动Office/WPS进程，等加载模板时再启动）
+        self.excel_widget = QAxWidget()
+        # 先不设置Control，等加载时再设置
+
+        # 占位提示
+        self.excel_placeholder = QLabel("点击「加载模板」打开Excel/WPS编辑模板")
+        self.excel_placeholder.setAlignment(Qt.AlignCenter)
+        self.excel_placeholder.setStyleSheet("color: #888; font-size: 14px; padding: 50px;")
+        layout.addWidget(self.excel_placeholder, 1)
 
         # 底部按钮
         btn_layout = QHBoxLayout()
@@ -318,102 +320,18 @@ class BookingWidget(QWidget):
         self.btn_fill_data.setEnabled(False)
         btn_layout.addWidget(self.btn_fill_data)
 
+        self.btn_save = QPushButton("保存")
+        self.btn_save.clicked.connect(self._save_booking_excel)
+        self.btn_save.setEnabled(False)
+        btn_layout.addWidget(self.btn_save)
+
+        self.btn_close_excel = QPushButton("关闭")
+        self.btn_close_excel.clicked.connect(self._close_excel)
+        self.btn_close_excel.setEnabled(False)
+        btn_layout.addWidget(self.btn_close_excel)
+
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
-
-    def _load_booking_template(self):
-        """加载BOOKING模板Excel"""
-        template_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "core", "phase2", "长晟出口海运BOOKING模板.xls"
-        )
-
-        if not os.path.exists(template_path):
-            QMessageBox.warning(self, "失败", f"模板文件不存在:\n{template_path}")
-            return
-
-        try:
-            import xlrd
-            wb = xlrd.open_workbook(template_path)
-            sh = wb.sheet_by_index(0)
-
-            # 设置表格行列数
-            self.booking_table.setRowCount(sh.nrows)
-            self.booking_table.setColumnCount(sh.ncols)
-
-            # 填充数据
-            for r in range(sh.nrows):
-                for c in range(sh.ncols):
-                    cell_value = sh.cell_value(r, c)
-                    item = QTableWidgetItem(str(cell_value) if cell_value else "")
-                    self.booking_table.setItem(r, c, item)
-
-            # 调整列宽
-            self.booking_table.resizeColumnsToContents()
-
-            self.btn_fill_data.setEnabled(True)
-            QMessageBox.information(self, "成功", "模板已加载")
-
-        except Exception as e:
-            QMessageBox.warning(self, "失败", f"加载模板失败:\n{str(e)}")
-
-    def _fill_booking_from_shipment(self):
-        """用Shipment数据填充表格"""
-        if not self.shipment:
-            QMessageBox.warning(self, "警告", "请先导入数据")
-            return
-
-        # 根据模板结构填充数据
-        # Row 1: Shipper发货人
-        # Row 8: Consignee收货人
-        # Row 13: Notify通知人
-        # Row 24: Port of loading
-        # Row 27: Port of Discharge
-
-        for r in range(self.booking_table.rowCount()):
-            for c in range(self.booking_table.columnCount()):
-                item = self.booking_table.item(r, c)
-                if not item:
-                    continue
-                cell_text = item.text()
-
-                # 发货人
-                if 'Shipper' in cell_text or '发货人' in cell_text:
-                    if self.shipment.shipper:
-                        self.booking_table.setItem(r, c + 1, QTableWidgetItem(self.shipment.shipper))
-
-                # 收货人
-                if 'Consignee' in cell_text or '收货人' in cell_text:
-                    if self.shipment.consignee:
-                        self.booking_table.setItem(r, c + 1, QTableWidgetItem(self.shipment.consignee))
-
-                # 通知人
-                if 'Notify' in cell_text or '通知人' in cell_text:
-                    if self.shipment.notifier:
-                        self.booking_table.setItem(r, c + 1, QTableWidgetItem(self.shipment.notifier))
-
-                # 卸货港
-                if 'Port of' in cell_text and 'Discharge' in cell_text:
-                    if self.shipment.destination:
-                        self.booking_table.setItem(r, c + 1, QTableWidgetItem(self.shipment.destination))
-
-        # 填充货物信息（Row 31-32附近）
-        for r in range(self.booking_table.rowCount()):
-            item = self.booking_table.item(r, 0)
-            if item and ('Marks' in item.text() or '货物' in item.text()):
-                # 填充品名
-                if self.shipment.product_name_cn:
-                    self.booking_table.setItem(r + 1, 2, QTableWidgetItem(self.shipment.product_name_cn))
-                # 填充数量
-                if self.shipment.package_info:
-                    pkg = self.shipment.package_info
-                    if pkg.quantity_kg:
-                        self.booking_table.setItem(r + 1, 5, QTableWidgetItem(f"{int(pkg.quantity_kg)} KG"))
-                    if pkg.gross_weight_kg:
-                        self.booking_table.setItem(r + 1, 7, QTableWidgetItem(f"{pkg.gross_weight_kg} KG"))
-                break
-
-        QMessageBox.information(self, "成功", "数据已填充")
 
     def _setup_msds_tab(self):
         """设置MSDS Tab"""
@@ -429,6 +347,66 @@ class BookingWidget(QWidget):
         self.msds_preview.setReadOnly(True)
         self.msds_preview.setPlaceholderText("点击「生成 MSDS」后，预览将显示在这里...")
         layout.addWidget(self.msds_preview)
+
+    def _load_booking_template(self):
+        """加载BOOKING模板Excel"""
+        filepath, _ = QFileDialog.getOpenFileName(
+            self, "选择BOOKING模板", "",
+            "Excel Files (*.xls *.xlsx);;All Files (*)"
+        )
+
+        if not filepath:
+            return
+
+        # 先关闭已打开的工作簿
+        self._close_excel()
+
+        # 尝试Excel
+        excel_started = self._try_start_excel("Excel.Application")
+        if not excel_started:
+            # 尝试WPS
+            excel_started = self._try_start_excel("WPS.Application")
+
+        if not excel_started:
+            QMessageBox.warning(self, "失败", "无法启动Excel或WPS，请确保已安装")
+            return
+
+        try:
+            # 隐藏占位提示
+            if self.excel_placeholder:
+                self.excel_placeholder.hide()
+
+            # 打开工作簿
+            workbooks = self.excel_widget.querySubObject("Workbooks")
+            if not workbooks:
+                raise Exception("无法获取Workbooks对象")
+
+            self.excel_workbook = workbooks.dynamicCall("Open(const QString&)", filepath)
+
+            if self.excel_workbook:
+                # 设置可见
+                self.excel_widget.setProperty("Visible", True)
+                self.btn_save.setEnabled(True)
+                self.btn_close_excel.setEnabled(True)
+                self.btn_fill_data.setEnabled(True)
+                QMessageBox.information(self, "成功", "模板已加载")
+            else:
+                QMessageBox.warning(self, "失败", "无法打开工作簿")
+
+        except Exception as e:
+            QMessageBox.warning(self, "失败", f"加载模板失败:\n{str(e)}")
+            self._close_excel()
+
+    def _try_start_excel(self, prog_id: str) -> bool:
+        """尝试启动Excel/WPS进程"""
+        try:
+            self.excel_widget.setControl(prog_id)
+            self.excel_widget.setProperty("DisplayAlerts", False)
+            # 测试是否可以正常调用
+            self.excel_widget.dynamicCall("SetVisible(bool)", False)
+            return True
+        except:
+            return False
 
     def _import_from_phase1(self):
         """从Phase 1导入数据"""
@@ -601,38 +579,100 @@ class BookingWidget(QWidget):
             self.btn_generate_booking.setEnabled(True)
             self.btn_generate_msds.setEnabled(True)
 
-    def _generate_booking(self):
-        """生成订舱单"""
+    def _fill_booking_from_shipment(self):
+        """用Shipment数据填充Excel表格（通过ActiveX）"""
         if not self.shipment:
             QMessageBox.warning(self, "警告", "请先导入数据")
             return
 
+        if not self.excel_workbook:
+            QMessageBox.warning(self, "警告", "请先加载模板")
+            return
+
         try:
-            import xlwt
-            from xlwt import Workbook
+            # 获取工作表
+            worksheet = self.excel_workbook.dynamicCall("ActiveSheet()")
 
-            output_dir = self.output_dir if self.output_dir else os.path.join(os.path.expanduser("~"), "Desktop")
-            pi_no = self.shipment.pi_no or "Booking"
-            filename = f"订舱单-{pi_no}.xls"
-            output_path = os.path.join(output_dir, filename)
+            # 遍历工作表查找并填充
+            used_range = worksheet.dynamicCall("UsedRange()")
+            rows = used_range.dynamicCall("Rows()")
+            row_count = rows.dynamicCall("Count()")
 
-            # 从表格创建Excel
-            wb = Workbook()
-            ws = wb.add_sheet('订舱单')
+            for r in range(1, row_count + 1):
+                for c in range(1, 10):  # 检查前10列
+                    cell = worksheet.dynamicCall("Cells(int, int)", r, c)
+                    cell_value = cell.dynamicCall("Value()")
+                    if not cell_value:
+                        continue
+                    cell_text = str(cell_value)
 
-            for r in range(self.booking_table.rowCount()):
-                for c in range(self.booking_table.columnCount()):
-                    item = self.booking_table.item(r, c)
-                    if item:
-                        ws.write(r, c, item.text())
+                    # 发货人
+                    if 'Shipper' in cell_text or '发货人' in cell_text:
+                        if self.shipment.shipper:
+                            next_cell = worksheet.dynamicCall("Cells(int, int)", r, c + 1)
+                            next_cell.dynamicCall("SetValue(const QVariant&)", self.shipment.shipper)
 
-            wb.save(output_path)
-            QMessageBox.information(self, "成功", f"订舱单已保存到:\n{output_path}")
+                    # 收货人
+                    if 'Consignee' in cell_text or '收货人' in cell_text:
+                        if self.shipment.consignee:
+                            next_cell = worksheet.dynamicCall("Cells(int, int)", r, c + 1)
+                            next_cell.dynamicCall("SetValue(const QVariant&)", self.shipment.consignee)
 
-        except ImportError:
-            QMessageBox.warning(self, "失败", "需要安装xlwt库: pip install xlwt")
+                    # 通知人
+                    if 'Notify' in cell_text or '通知人' in cell_text:
+                        if self.shipment.notifier:
+                            next_cell = worksheet.dynamicCall("Cells(int, int)", r, c + 1)
+                            next_cell.dynamicCall("SetValue(const QVariant&)", self.shipment.notifier)
+
+                    # 卸货港
+                    if 'Port of' in cell_text and 'Discharge' in cell_text:
+                        if self.shipment.destination:
+                            next_cell = worksheet.dynamicCall("Cells(int, int)", r, c + 1)
+                            next_cell.dynamicCall("SetValue(const QVariant&)", self.shipment.destination)
+
+            QMessageBox.information(self, "成功", "数据已填充到Excel")
+
         except Exception as e:
-            QMessageBox.warning(self, "失败", f"生成订舱单失败:\n{str(e)}")
+            QMessageBox.warning(self, "失败", f"填充数据失败:\n{str(e)}")
+
+    def _close_excel(self):
+        """关闭Excel工作簿"""
+        try:
+            if self.excel_workbook:
+                try:
+                    self.excel_workbook.dynamicCall("Close(bool)", False)
+                except:
+                    pass
+                self.excel_workbook = None
+            if self.excel_widget:
+                try:
+                    self.excel_widget.dynamicCall("Quit()")
+                except:
+                    pass
+            self.btn_save.setEnabled(False)
+            self.btn_close_excel.setEnabled(False)
+            self.btn_fill_data.setEnabled(False)
+            # 显示占位提示
+            if self.excel_placeholder:
+                self.excel_placeholder.show()
+        except Exception as e:
+            print(f"关闭Excel失败: {e}")
+
+    def _save_booking_excel(self):
+        """保存Excel文件"""
+        try:
+            if self.excel_workbook:
+                # 直接调用工作簿的Save方法
+                self.excel_workbook.dynamicCall("Save()")
+                QMessageBox.information(self, "成功", "文件已保存")
+            else:
+                QMessageBox.warning(self, "失败", "没有打开的工作簿")
+        except Exception as e:
+            QMessageBox.warning(self, "失败", f"保存失败:\n{str(e)}")
+
+    def _generate_booking(self):
+        """生成订舱单"""
+        QMessageBox.information(self, "提示", "请先加载模板并编辑，然后点击「保存」按钮保存")
 
     def _generate_msds(self):
         """生成MSDS"""

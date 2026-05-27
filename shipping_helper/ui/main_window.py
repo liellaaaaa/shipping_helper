@@ -67,16 +67,47 @@ class MainWindow(QMainWindow):
     def _create_phase1_widget(self) -> QWidget:
         """创建Phase 1主Widget"""
         widget = QWidget()
-        layout = QHBoxLayout()
-        widget.setLayout(layout)
+        main_layout = QVBoxLayout()
+        widget.setLayout(main_layout)
+
+        # 内容区域：左右分栏
+        content_widget = QWidget()
+        content_layout = QHBoxLayout()
+        content_widget.setLayout(content_layout)
 
         # 左侧：输入区 + 合并字段结果
         left_widget = self._create_left_panel()
-        layout.addWidget(left_widget, 2)
+        content_layout.addWidget(left_widget, 2)
 
         # 右侧：订单要求 + 包装计算
         right_widget = self._create_right_panel()
-        layout.addWidget(right_widget, 3)
+        content_layout.addWidget(right_widget, 3)
+
+        main_layout.addWidget(content_widget, 1)
+
+        # 底部按钮区：右对齐"保存当前数据"按钮
+        bottom_bar = QWidget()
+        bottom_bar.setStyleSheet("border-top: 1px solid #ddd; background-color: #f9f9f9;")
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setContentsMargins(10, 5, 10, 5)
+        bottom_bar.setLayout(bottom_layout)
+
+        bottom_layout.addStretch()
+        self.btn_save_phase1 = QPushButton("保存当前数据")
+        self.btn_save_phase1.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                font-weight: bold;
+                padding: 8px 24px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #1976D2; }
+        """)
+        self.btn_save_phase1.clicked.connect(self._save_phase1_data)
+        bottom_layout.addWidget(self.btn_save_phase1)
+
+        main_layout.addWidget(bottom_bar)
 
         return widget
 
@@ -541,8 +572,38 @@ class MainWindow(QMainWindow):
         self._recalculate_package()
         self._update_result_ui()
 
-        # 自动导入数据到 Phase 2
-        self._import_data_to_phase2()
+        # 不再自动导入Phase 2，由用户手动点击"保存当前数据"决定何时进入Phase 2
+
+    def _save_phase1_data(self):
+        """保存Phase 1数据"""
+        if not self.merged_data:
+            QMessageBox.warning(self, "警告", "没有可保存的数据，请先解析订单")
+            return
+
+        # 创建PI号对应的输出文件夹
+        pi_no = self.merged_data.get('PI号', 'unknown')
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        self.output_dir = os.path.join(desktop, f"订舱文件_{pi_no}")
+
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
+        # 保存到文件
+        import json
+        filename = f"Phase1_数据_{pi_no}.json"
+        filepath = os.path.join(self.output_dir, filename)
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(self.merged_data, f, ensure_ascii=False, indent=2)
+
+        reply = QMessageBox.question(self, "保存成功",
+            f"数据已保存到:\n{filepath}\n\n是否进入Phase 2？",
+            QMessageBox.Yes | QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            # 导入数据到Phase 2
+            self._import_data_to_phase2()
+            self.main_tabs.setCurrentIndex(1)
 
     def _build_merged_data(self, order_data, pi_data, code_info) -> dict:
         """构建合并数据"""
