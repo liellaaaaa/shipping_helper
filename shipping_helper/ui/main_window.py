@@ -18,6 +18,7 @@ from core.order_parser import OrderParser
 from core.pi_extractor import PIExtractor
 from core.code_matcher import CodeMatcher
 from core.package_calculator import PackageCalculator
+from ui.booking_widget import BookingWidget
 
 
 class MainWindow(QMainWindow):
@@ -895,10 +896,47 @@ class MainWindow(QMainWindow):
         self._update_package_totals()
 
     def enter_phase2(self):
-        """进入Phase 2（预留接口）"""
-        QMessageBox.information(
-            self, "Phase 2",
-            f"合并数据: {len(self.merged_data)} 字段\n"
-            f"包装结果: {self.package_result}\n\n"
-            "Phase 2 功能待开发"
-        )
+        """进入Phase 2"""
+        # 构建Phase 1的数据字典
+        phase1_data = self.merged_data.copy()
+
+        # 获取包装计算结果
+        package_data = {}
+        row_count = self.package_table.rowCount()
+        if row_count > 0:
+            # 取第一行的包装数据作为主包装信息
+            pkg_type = self.package_table.item(0, 1).text() if self.package_table.item(0, 1) else ""
+            qty = self.package_table.item(0, 2).text() if self.package_table.item(0, 2) else "0"
+            drums = self.package_table.item(0, 3).text() if self.package_table.item(0, 3) else "0"
+            pallets = self.package_table.item(0, 4).text() if self.package_table.item(0, 4) else "0"
+            volume = self.package_table.item(0, 5).text() if self.package_table.item(0, 5) else "0"
+            weight = self.package_table.item(0, 6).text() if self.package_table.item(0, 6) else "0"
+
+            package_data = {
+                "package_type": pkg_type,
+                "quantity_kg": qty,
+                "drums": drums,
+                "pallets": pallets.replace("无", "0"),
+                "volume_cbm": volume.replace(" CBM", ""),
+                "gross_weight_kg": weight.replace(" kg", ""),
+            }
+
+        # 获取卡板类型
+        pallet_type = self.pallet_combo.currentText()
+        package_data["pallet_type"] = pallet_type
+
+        # 创建并显示BookingWidget
+        self.booking_widget = BookingWidget(self, phase1_data)
+        self.booking_widget.set_package_data(package_data)
+
+        # 在新窗口中显示
+        from PyQt5.QtWidgets import QDialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Phase 2: 订舱出货")
+        dialog.setGeometry(150, 50, 1200, 700)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.booking_widget)
+        dialog.setLayout(layout)
+
+        dialog.exec_()
