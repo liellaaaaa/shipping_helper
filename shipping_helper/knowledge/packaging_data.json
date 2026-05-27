@@ -15,8 +15,8 @@
     {"name": "1吨桶", "dims": "1200*1000*1150mm", "cbm": 1.38, "tare_kg": 58.0, "gross_kg": 1058.0, "net_kg": 1000.0}
   ],
   "pallets": [
-    {"name": "1.0*1.0m卡板", "size_m": "1.0*1.0", "tare_kg": 17.0, "cbm": 0.15},
-    {"name": "1.1*1.1m卡板", "size_m": "1.1*1.1", "tare_kg": 18.5, "cbm": 0.2}
+    {"name": "1.0*1.0m卡板", "size_m": "1.0*1.0", "weight_old": 17.0, "weight_new": 27.0, "cbm": 0.15},
+    {"name": "1.1*1.1m卡板", "size_m": "1.1*1.1", "weight_old": 18.5, "weight_new": 27.0, "cbm": 0.2}
   ],
   "pallet_capacity": {
     "30kg蓝桶": {"1.0*1.0": null, "1.1*1.1": 24},

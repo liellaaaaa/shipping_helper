@@ -196,15 +196,16 @@ class PackageCalculator:
                     self.pallets.append({
                         'name': pallet.get('name', ''),
                         'size_m': pallet.get('size_m', ''),
-                        'tare_kg': pallet.get('tare_kg', 0),
+                        'weight_old': pallet.get('weight_old', pallet.get('tare_kg', 0)),
+                        'weight_new': pallet.get('weight_new', pallet.get('tare_kg', 0)),
                         'cbm': pallet.get('cbm', 0),
                     })
             if 'pallet_capacity' in data:
                 self.pallet_capacity = data.get('pallet_capacity', {})
             if not self.pallets:
                 self.pallets = [
-                    {'name': '1.0*1.0m卡板', 'size_m': '1.0*1.0', 'tare_kg': 17.0, 'cbm': 0.15},
-                    {'name': '1.1*1.1m卡板', 'size_m': '1.1*1.1', 'tare_kg': 18.5, 'cbm': 0.2},
+                    {'name': '1.0*1.0m卡板', 'size_m': '1.0*1.0', 'weight_old': 17.0, 'weight_new': 27.0, 'cbm': 0.15},
+                    {'name': '1.1*1.1m卡板', 'size_m': '1.1*1.1', 'weight_old': 18.5, 'weight_new': 27.0, 'cbm': 0.2},
                 ]
             return
 
@@ -454,8 +455,8 @@ class PackageCalculator:
             {'name': '1吨桶', 'dims': '1200*1000*1150mm', 'cbm': 1.38, 'tare_kg': 58.0, 'gross_kg': 1058.0, 'net_kg': 1000.0},
         ]
         self.pallets = [
-            {'name': '1.0*1.0m卡板', 'size_m': '1.0*1.0', 'tare_kg': 17.0, 'cbm': 0.15},
-            {'name': '1.1*1.1m卡板', 'size_m': '1.1*1.1', 'tare_kg': 18.5, 'cbm': 0.2},
+            {'name': '1.0*1.0m卡板', 'size_m': '1.0*1.0', 'weight_old': 17.0, 'weight_new': 27.0, 'cbm': 0.15},
+            {'name': '1.1*1.1m卡板', 'size_m': '1.1*1.1', 'weight_old': 18.5, 'weight_new': 27.0, 'cbm': 0.2},
         ]
         self._set_default_pallet_capacity()
         self.no_pallet_container_capacity = {
@@ -490,7 +491,7 @@ class PackageCalculator:
         """计算包装需求（打卡板模式）"""
         return self.calculate_with_pallet(drum_name, pallet_name, total_quantity_kg)
 
-    def calculate_with_pallet(self, drum_name: str, pallet_name: str, total_quantity_kg: float, drums_per_pallet_override: int = None) -> dict:
+    def calculate_with_pallet(self, drum_name: str, pallet_name: str, total_quantity_kg: float, drums_per_pallet_override: int = None, pallet_version: str = 'new') -> dict:
         """计算包装需求（打卡板模式）
 
         Args:
@@ -498,6 +499,7 @@ class PackageCalculator:
             pallet_name: 卡板类型名称
             total_quantity_kg: 总重量(kg)
             drums_per_pallet_override: 手动指定每板数量，留空则使用JSON中的默认值
+            pallet_version: 卡板版本，'new'或'old'，影响卡板重量
         """
         drum_info = self.find_package(drum_name)
         if not drum_info:
@@ -546,7 +548,12 @@ class PackageCalculator:
 
         product_weight = total_quantity_kg
         drum_tare_weight = drum_info['tare_kg'] * total_drums
-        pallet_tare_weight = pallet_info['tare_kg'] * total_pallets
+        # 根据卡板版本选择重量：新卡板用weight_new，旧卡板用weight_old
+        if pallet_version == 'new':
+            pallet_weight = pallet_info.get('weight_new', pallet_info.get('tare_kg', 18.5))
+        else:
+            pallet_weight = pallet_info.get('weight_old', pallet_info.get('tare_kg', 18.5))
+        pallet_tare_weight = pallet_weight * total_pallets
         total_tare = drum_tare_weight + pallet_tare_weight
         gross_weight = product_weight + total_tare
 
