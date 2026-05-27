@@ -8,11 +8,20 @@
 2. 根据任务性质调用对应技能（using-superpowers）
 3. 如本地没有对应技能，使用 find-skills 查找
 
-## Phase 1 核心任务
+## Phase 1 核心任务 ✅ 已完成
 - 订单表粘贴解析（23个字段）
 - PI文件提取（.xls格式）
 - 数据汇聚（订单表 + PI + 商品编码）
 - 包装计算（桶数、卡板、体积、毛重）
+- 卡板组功能（同一卡板放置多个产品）
+- 卡板版本选择（1.0*1.0m / 1.1*1.1m）
+- 手动调整卡板数量
+
+## Phase 2 核心任务（规划中）
+- 模板填充（LOI、MSDS等）
+
+## Phase 3 核心任务（规划中）
+- 订舱出货
 
 ## 技术栈
 - Python 3.x
@@ -30,9 +39,22 @@
 ```
 shipping_helper/
 ├── core/           # 核心业务逻辑
+│   ├── order_parser.py        # 订单解析器
+│   ├── pi_extractor.py        # PI提取器
+│   ├── code_matcher.py         # 商品编码匹配器
+│   ├── package_calculator.py  # 包装计算器
+│   └── merger.py              # 数据汇聚器
 ├── ui/             # 用户界面
+│   └── main_window.py         # 主窗口
 ├── knowledge/      # 知识库JSON
+│   ├── products_knowledge.json
+│   └── packaging_data.json
 ├── config/         # 配置文件
+│   └── settings.json
+├── docs/           # 设计文档
+│   └── superpowers/
+│       ├── specs/
+│       └── plans/
 └── main.py         # 入口文件
 ```
 
