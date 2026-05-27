@@ -218,10 +218,27 @@ class ReportParser:
                         cargo.producer = content
                         break
 
-            # 鉴定结论
-            if '鉴定结论' in line and 'Conclusion' in line:
+            # 鉴定结论 - 查找"鉴定结论"或"Conclusion"标签后的内容
+            # 精确匹配：只匹配单独的"鉴定结论"行或"Conclusion"行，不匹配包含这两个词的混合文本
+            is_conclusion_label = (line == '鉴定结论' or line == 'Conclusion' or
+                                   '鉴定结论' in line and 'Conclusion' in line)
+            if is_conclusion_label:
+                # 检查后续几行找结论内容
                 for j in range(i + 1, min(i + 4, n)):
                     content = normalized_lines[j].strip()
+                    # 跳过空行和纯标签
+                    if not content or content in ['Conclusion', '鉴定结论']:
+                        continue
+                    # 跳过纯英文标签行或太短的行
+                    if re.match(r'^[A-Za-z\s]+$', content) or len(content) < 5:
+                        continue
+                    # 跳过危险评估项目的标题（以数字开头）
+                    if re.match(r'^\d+\.', content):
+                        continue
+                    # 跳过PDF声明相关的段落（通常很长）
+                    if len(content) > 100:
+                        continue
+                    # 找到结论内容
                     if content:
                         cargo.conclusion = content
                         break

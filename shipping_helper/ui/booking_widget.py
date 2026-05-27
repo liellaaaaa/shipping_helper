@@ -442,18 +442,19 @@ class BookingWidget(QWidget):
     def _load_cargo_report(self):
         """加载运输鉴定报告"""
         filepath, _ = QFileDialog.getOpenFileName(
-            self, "选择运输鉴定报告", "",
-            "Excel Files (*.xlsx *.xls);;All Files (*)"
+            self, "选择运输鉴定报告",
+            "C:/Users/windows/Desktop/shipping_helper/template/Phase2/运输危险性鉴定报告",
+            "报告 Files (*.pdf *.docx *.xls *.xlsx);;All Files (*)"
         )
 
         if filepath:
             try:
                 # 使用ReportParser解析鉴定报告
-                cargo = self.report_parser.parse_file(filepath)
+                cargo = self.report_parser.parse(filepath)
                 if cargo:
                     self.shipment.cargo = cargo
                     self._update_cargo_ui()
-                    QMessageBox.information(self, "成功", "鉴定报告已加载")
+                    QMessageBox.information(self, "成功", f"鉴定报告已加载\n报告编号: {cargo.report_no or '未知'}\n运输类型: {cargo.transport_type or '未知'}")
                 else:
                     QMessageBox.warning(self, "失败", "无法解析鉴定报告文件")
             except Exception as e:
