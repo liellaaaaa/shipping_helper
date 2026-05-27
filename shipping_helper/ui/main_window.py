@@ -702,12 +702,27 @@ class MainWindow(QMainWindow):
             max_cbm = 33.07  # 20GP最大体积
             total_20gp = int(total_cbm // max_cbm) + (1 if total_cbm % max_cbm > 0 else 0)
 
-        self.package_table.setRowCount(row_count + 1)
-        self.package_table.setItem(row_count, 0, QTableWidgetItem("**合计**"))
-        self.package_table.setItem(row_count, 3, QTableWidgetItem(str(total_drums)))
-        self.package_table.setItem(row_count, 4, QTableWidgetItem(str(total_pallets)))
-        self.package_table.setItem(row_count, 5, QTableWidgetItem(f"{total_cbm:.2f}"))
-        self.package_table.setItem(row_count, 6, QTableWidgetItem(f"{total_20gp}个"))
+        # 检查是否已有合计行，有则更新，无则添加
+        has_total = False
+        for i in range(row_count):
+            item = self.package_table.item(i, 0)
+            if item and item.text() == "**合计**":
+                self.package_table.setItem(i, 3, QTableWidgetItem(str(total_drums)))
+                self.package_table.setItem(i, 4, QTableWidgetItem(str(total_pallets)))
+                self.package_table.setItem(i, 5, QTableWidgetItem(f"{total_cbm:.2f}"))
+                self.package_table.setItem(i, 6, QTableWidgetItem(f"{total_20gp}个"))
+                has_total = True
+                break
+
+        if not has_total:
+            total_row = row_count
+            self.package_table.insertRow(total_row)
+            self.package_table.setItem(total_row, 0, QTableWidgetItem("**合计**"))
+            self.package_table.item(total_row, 0).setFont(QFont("Microsoft YaHei", 9, QFont.Bold))
+            self.package_table.setItem(total_row, 3, QTableWidgetItem(str(total_drums)))
+            self.package_table.setItem(total_row, 4, QTableWidgetItem(str(total_pallets)))
+            self.package_table.setItem(total_row, 5, QTableWidgetItem(f"{total_cbm:.2f}"))
+            self.package_table.setItem(total_row, 6, QTableWidgetItem(f"{total_20gp}个"))
 
     def _clear_package_items(self):
         """清除包装计算表格"""
