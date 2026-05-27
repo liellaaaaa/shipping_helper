@@ -113,20 +113,7 @@ class MainWindow(QMainWindow):
         """)
         self.btn_calculate.clicked.connect(self.calculate)
 
-        self.btn_add_item = QPushButton("添加")
-        self.btn_add_item.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                font-weight: bold;
-                padding: 8px;
-                border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #1976D2; }
-        """)
-        self.btn_add_item.clicked.connect(self._add_package_item)
-
-        btn_row.addWidget(self.btn_add_item)
+        btn_row.addWidget(self.btn_calculate)
         btn_row.addStretch()
         input_layout.addLayout(btn_row)
 
