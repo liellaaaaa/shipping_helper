@@ -252,17 +252,35 @@ class MainWindow(QMainWindow):
         self.no_pallet_check.stateChanged.connect(self._on_package_changed)
         package_layout.addWidget(self.no_pallet_check)
 
-        # 计算结果
-        self.package_result_label = QLabel("请先粘贴订单数据")
-        self.package_result_label.setWordWrap(True)
-        self.package_result_label.setFont(QFont("Microsoft YaHei", 10))
-        self.package_result_label.setStyleSheet("background-color: #f5f5f5; padding: 8px; border-radius: 4px;")
-        package_layout.addWidget(self.package_result_label)
+        # 包装计算表格（多产品支持）
+        self.package_table = QTableWidget()
+        self.package_table.setColumnCount(7)
+        self.package_table.setHorizontalHeaderLabels([
+            "产品", "桶类型", "数量(kg)", "桶数", "卡板数", "体积(CBM)", "20GP"
+        ])
+        self.package_table.verticalHeader().setDefaultSectionSize(28)
+        self.package_table.setColumnWidth(0, 120)
+        self.package_table.setColumnWidth(1, 100)
+        self.package_table.setColumnWidth(2, 70)
+        self.package_table.setColumnWidth(3, 50)
+        self.package_table.setColumnWidth(4, 50)
+        self.package_table.setColumnWidth(5, 70)
+        self.package_table.setColumnWidth(6, 60)
+        self.package_table.setRowCount(1)
+        self.package_table.resizeRowsToContents()
+        package_layout.addWidget(self.package_table)
 
-        # 重新计算按钮
-        self.btn_recalc = QPushButton("重新计算包装")
-        self.btn_recalc.clicked.connect(self._recalculate_package)
-        package_layout.addWidget(self.btn_recalc)
+        # 按钮行
+        btn_row2 = QHBoxLayout()
+        self.btn_calculate_item = QPushButton("计算")
+        self.btn_calculate_item.clicked.connect(self._calculate_package_item)
+        btn_row2.addWidget(self.btn_calculate_item)
+
+        self.btn_clear_items = QPushButton("清除")
+        self.btn_clear_items.clicked.connect(self._clear_package_items)
+        btn_row2.addWidget(self.btn_clear_items)
+        btn_row2.addStretch()
+        package_layout.addLayout(btn_row2)
 
         package_group.setLayout(package_layout)
         layout.addWidget(package_group)
@@ -279,7 +297,7 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover { background-color: #1976D2; }
         """)
-        self.btn_add_item.clicked.connect(self._add_order_item)
+        self.btn_add_item.clicked.connect(self._add_package_item)
         layout.addWidget(self.btn_add_item)
 
         layout.addStretch()
@@ -459,49 +477,72 @@ class MainWindow(QMainWindow):
         self.pi_fields_table.resizeRowsToContents()
 
     def _shift_values_down(self):
-        """下移值：将选中行及之后的值往下移一位"""
+        """下移值：将选中行及之后所有行下移一位"""
         table = self.order_fields_table
         current_row = table.currentRow()
-        if current_row < 0:
-            current_row = 10
         row_count = table.rowCount()
+        if current_row < 0:
+            current_row = 0
         if current_row >= row_count - 1:
             self.statusBar().showMessage("已到最后一行，无法继续下移", 3000)
             return
 
-        current_item = table.item(current_row, 1)
-        original_value = current_item.text() if current_item else ''
+        # 检查下方是否有数据
+        has_data = any(
+            table.item(i, 1).text()
+            for i in range(current_row + 1, row_count)
+        )
+        if has_data:
+            reply = QMessageBox.question(
+                self, '确认移动',
+                '移动目标位置有数据，是否继续？',
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                return
 
+        # 下移：current_row到row_count-1所有行下移一位
+        for i in range(row_count - 1, current_row, -1):
+            item = table.item(i - 1, 1)
+            value = item.text() if item else ''
+            table.setItem(i, 1, QTableWidgetItem(value))
+        table.setItem(current_row, 1, QTableWidgetItem(''))
+        table.setCurrentCell(current_row + 1, 1)
+        self.statusBar().showMessage(f"已将第{current_row+1}行及之后下移", 3000)
+
+    def _shift_values_up(self):
+        """上移值：将选中行及之后所有行上移一位"""
+        table = self.order_fields_table
+        current_row = table.currentRow()
+        row_count = table.rowCount()
+        if current_row < 0:
+            current_row = 0
+        if current_row <= 0:
+            self.statusBar().showMessage("已到第一行，无法继续上移", 3000)
+            return
+
+        # 检查下方是否有数据（移动后会覆盖）
+        has_data = any(
+            table.item(i, 1).text()
+            for i in range(current_row + 1, row_count)
+        )
+        if has_data:
+            reply = QMessageBox.question(
+                self, '确认移动',
+                '移动目标位置有数据，是否继续？',
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                return
+
+        # 上移：current_row到row_count-1所有行上移一位
         for i in range(current_row, row_count - 1):
             item = table.item(i + 1, 1)
             value = item.text() if item else ''
             table.setItem(i, 1, QTableWidgetItem(value))
         table.setItem(row_count - 1, 1, QTableWidgetItem(''))
-        table.setItem(current_row + 1, 1, QTableWidgetItem(original_value))
-        table.setCurrentCell(current_row + 1, 1)
-        self.statusBar().showMessage(f"已将第{current_row+1}行下移", 3000)
-
-    def _shift_values_up(self):
-        """上移值：将选中行及之后的值往上移一位"""
-        table = self.order_fields_table
-        current_row = table.currentRow()
-        if current_row < 0:
-            current_row = 10
-        if current_row <= 0:
-            self.statusBar().showMessage("已到第一行，无法继续上移", 3000)
-            return
-
-        current_item = table.item(current_row, 1)
-        original_value = current_item.text() if current_item else ''
-
-        for i in range(current_row - 1, -1, -1):
-            item = table.item(i, 1)
-            value = item.text() if item else ''
-            table.setItem(i + 1, 1, QTableWidgetItem(value))
-        table.setItem(0, 1, QTableWidgetItem(''))
-        table.setItem(current_row - 1, 1, QTableWidgetItem(original_value))
-        table.setCurrentCell(current_row - 1, 1)
-        self.statusBar().showMessage(f"已将第{current_row+1}行上移", 3000)
+        table.setCurrentCell(current_row - 1 if current_row > 0 else 0, 1)
+        self.statusBar().showMessage(f"已将第{current_row+1}行及之后上移", 3000)
 
     def copy_cell_value(self, row, col):
         """点击单元格复制值"""
@@ -514,52 +555,130 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"已复制: {item.text()}", 2000)
 
     def _on_package_changed(self):
-        """当包装选项变化时重新计算"""
-        if hasattr(self, '_current_order_qty') and self._current_order_qty > 0:
-            self._recalculate_package()
+        """当包装选项变化时重新计算当前行"""
+        self._calculate_package_item()
 
-    def _recalculate_package(self):
-        """重新计算包装"""
-        if not hasattr(self, '_current_order_qty') or self._current_order_qty <= 0:
-            self.package_result_label.setText("无效的订单量")
-            return
+    def _calculate_package_item(self):
+        """计算包装表格中选中行的包装"""
+        current_row = self.package_table.currentRow()
+        if current_row < 0:
+            current_row = 0
+
+        # 获取当前行数据
+        product_name = self.package_table.item(current_row, 0)
+        product_name = product_name.text() if product_name else ''
+
+        qty_item = self.package_table.item(current_row, 2)
+        try:
+            qty = float(qty_item.text()) if qty_item and qty_item.text() else 0
+        except:
+            qty = 0
 
         drum_type = self.drum_combo.currentText()
         pallet_type = self.pallet_combo.currentText()
-        total_qty = self._current_order_qty
+
+        if qty <= 0:
+            return
 
         if self.no_pallet_check.isChecked():
-            result = self.package_calculator.calculate_no_pallet(drum_type, total_qty)
+            result = self.package_calculator.calculate_no_pallet(drum_type, qty)
         else:
-            result = self.package_calculator.calculate_with_pallet(drum_type, pallet_type, total_qty)
-
-        self.package_result = result
+            result = self.package_calculator.calculate_with_pallet(drum_type, pallet_type, qty)
 
         if 'error' in result:
-            self.package_result_label.setText(f"错误: {result['error']}")
+            return
+
+        res = result.get('result', {})
+        container = result.get('container_fit', {})
+
+        # 更新表格
+        self.package_table.setItem(current_row, 3, QTableWidgetItem(str(int(res.get('total_drums', 0)))))
+        if self.no_pallet_check.isChecked():
+            self.package_table.setItem(current_row, 4, QTableWidgetItem('无'))
         else:
-            res = result.get('result', {})
-            container = result.get('container_fit', {})
-            fits_20gp = container.get('fits_20gp', False)
-            full_loads = container.get('full_20gp_loads', 0)
+            self.package_table.setItem(current_row, 4, QTableWidgetItem(str(int(res.get('total_pallets', 0)))))
+        self.package_table.setItem(current_row, 5, QTableWidgetItem(f"{res.get('total_volume_cbm', 0):.2f}"))
 
-            if fits_20gp:
-                container_text = f"能装入20GP，需要 {full_loads} 个货柜"
-            else:
-                container_text = "不能装入20GP"
+        fits_20gp = container.get('fits_20gp', False)
+        full_loads = container.get('full_20gp_loads', 0)
+        if fits_20gp:
+            self.package_table.setItem(current_row, 6, QTableWidgetItem(f"{full_loads}个"))
+        else:
+            self.package_table.setItem(current_row, 6, QTableWidgetItem('不能'))
 
-            text = f"""桶类型: {drum_type}
-桶数: {res.get('total_drums', 0)}
-卡板数: {'无' if self.no_pallet_check.isChecked() else res.get('total_pallets', 0)}
-产品净重: {res.get('product_weight_kg', 0)} kg
-毛重: {res.get('gross_weight_kg', 0)} kg
-总体积: {res.get('total_volume_cbm', 0)} CBM
-{container_text}"""
-            self.package_result_label.setText(text)
+        self._update_package_totals()
+
+    def _update_package_totals(self):
+        """更新包装计算合计"""
+        row_count = self.package_table.rowCount()
+        total_drums = 0
+        total_pallets = 0
+        total_cbm = 0.0
+        total_20gp = 0
+
+        for i in range(row_count):
+            try:
+                drums_item = self.package_table.item(i, 3)
+                if drums_item and drums_item.text() and drums_item.text() != '':
+                    total_drums += int(drums_item.text())
+            except:
+                pass
+
+            try:
+                pallets_item = self.package_table.item(i, 4)
+                if pallets_item and pallets_item.text() and pallets_item.text() not in ['无', '']:
+                    total_pallets += int(pallets_item.text())
+            except:
+                pass
+
+            try:
+                cbm_item = self.package_table.item(i, 5)
+                if cbm_item and cbm_item.text():
+                    total_cbm += float(cbm_item.text())
+            except:
+                pass
+
+        # 简单计算需要的20GP数量
+        if total_cbm > 0:
+            max_cbm = 33.07  # 20GP最大体积
+            total_20gp = int(total_cbm // max_cbm) + (1 if total_cbm % max_cbm > 0 else 0)
+
+        self.package_table.setRowCount(row_count + 1)
+        self.package_table.setItem(row_count, 0, QTableWidgetItem("**合计**"))
+        self.package_table.setItem(row_count, 3, QTableWidgetItem(str(total_drums)))
+        self.package_table.setItem(row_count, 4, QTableWidgetItem(str(total_pallets)))
+        self.package_table.setItem(row_count, 5, QTableWidgetItem(f"{total_cbm:.2f}"))
+        self.package_table.setItem(row_count, 6, QTableWidgetItem(f"{total_20gp}个"))
+
+    def _clear_package_items(self):
+        """清除包装计算表格"""
+        self.package_table.setRowCount(1)
+        for col in range(7):
+            self.package_table.setItem(0, col, QTableWidgetItem(''))
+
+    def _add_package_item(self):
+        """添加包装产品项"""
+        current_row = self.package_table.currentRow()
+        if current_row < 0:
+            current_row = self.package_table.rowCount() - 1
+
+        # 在当前行后插入新行
+        self.package_table.insertRow(current_row + 1)
+
+        # 预填产品名和数量（如果有合并数据）
+        if hasattr(self, 'merged_data') and self.merged_data:
+            pi_name = self.merged_data.get('品名英文', '')
+            if pi_name:
+                self.package_table.setItem(current_row + 1, 0, QTableWidgetItem(pi_name))
+            order_qty = self.merged_data.get('订单量kg', '')
+            if order_qty:
+                self.package_table.setItem(current_row + 1, 2, QTableWidgetItem(str(order_qty)))
+
+        self.package_table.setCurrentCell(current_row + 1, 0)
 
     def _add_order_item(self):
-        """添加订单项"""
-        QMessageBox.information(self, "添加", "添加功能待开发")
+        """添加订单项（兼容旧调用）"""
+        self._add_package_item()
 
     def enter_phase2(self):
         """进入Phase 2（预留接口）"""
