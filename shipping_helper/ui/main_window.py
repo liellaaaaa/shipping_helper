@@ -124,9 +124,9 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover { background-color: #1976D2; }
         """)
-        self.btn_add_item.clicked.connect(self._add_order_item)
+        self.btn_add_item.clicked.connect(self._add_package_item)
 
-        btn_row.addWidget(self.btn_calculate)
+        btn_row.addWidget(self.btn_add_item)
         btn_row.addStretch()
         input_layout.addLayout(btn_row)
 
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
         input_layout.addWidget(self.knowledge_label)
 
         input_group.setLayout(input_layout)
-        layout.addWidget(input_group)
+        layout.addWidget(input_group, 1)  # 输入区占1份
 
         # ===== 合并字段结果 =====
         self.fields_group = QGroupBox("合并字段结果")
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(350)
+        scroll.setMinimumHeight(400)
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout()
 
@@ -199,7 +199,8 @@ class MainWindow(QMainWindow):
         fields_layout.addWidget(scroll)
 
         self.fields_group.setLayout(fields_layout)
-        layout.addWidget(self.fields_group)
+        layout.addWidget(self.fields_group, 4)  # 合并字段结果占4份
+        layout.addStretch()
 
         return panel
 
